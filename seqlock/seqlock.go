@@ -45,14 +45,15 @@ func (s *Seqlock) Get() (ret [1024]byte) {
 func (s *Seqlock) Put(v [1024]byte) {
 	// Writers need to take a lock
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	// Notify readers that we are writing
 	atomic.AddUint32(&s.seq, 1)
+
 	copy(s.data[:], v[:])
 
 	// Notify readers that we are done
 	atomic.AddUint32(&s.seq, 1)
+	s.mu.Unlock()
 }
 
 // Update applies the update function to the data in the seqlock.

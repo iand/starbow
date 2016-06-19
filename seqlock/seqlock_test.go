@@ -3,6 +3,7 @@ package seqlock
 import (
 	"bytes"
 	"encoding/binary"
+	"runtime"
 	"sync"
 	"testing"
 )
@@ -23,8 +24,17 @@ func TestPutThenGet(t *testing.T) {
 }
 
 func TestMultiUpdate(t *testing.T) {
-	s := New()
 	n := 5
+	runtime.GOMAXPROCS(n)
+
+	// Increment by 1
+	inc := func(data []byte) error {
+		val, _ := binary.ReadVarint(bytes.NewReader(data))
+		binary.PutVarint(data, val+1)
+		return nil
+	}
+
+	s := New()
 	l := 50000
 
 	var wg sync.WaitGroup
@@ -32,12 +42,7 @@ func TestMultiUpdate(t *testing.T) {
 	for i := 0; i < n; i++ {
 		go func(s *Seqlock, l int) {
 			for j := 0; j < l; j++ {
-				// Increment
-				s.Update(func(data []byte) error {
-					val, _ := binary.ReadVarint(bytes.NewReader(data))
-					binary.PutVarint(data, val+1)
-					return nil
-				})
+				s.Update(inc)
 			}
 			wg.Done()
 		}(s, l)
@@ -50,5 +55,4 @@ func TestMultiUpdate(t *testing.T) {
 	if val != int64(n*l) {
 		t.Errorf("got %d, wanted %d", val, n*l)
 	}
-
 }

@@ -43,3 +43,71 @@ func TestStats64(t *testing.T) {
 		}
 	}
 }
+
+var benchres interface{}
+
+func BenchmarkStats64Update(b *testing.B) {
+	buf := make([]byte, Stats64Size)
+	s := NewStats64(buf)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		s.Update(0.12345)
+	}
+	benchres = s.Mean()
+}
+
+func BenchmarkStats64Mean(b *testing.B) {
+	buf := make([]byte, Stats64Size)
+	s := NewStats64(buf)
+	for i := 1; i < 10; i++ {
+		s.Update(float64(i))
+	}
+	b.ResetTimer()
+	var v float64
+	for i := 0; i < b.N; i++ {
+		v = s.Mean()
+	}
+	benchres = v
+}
+
+func BenchmarkStats64Sum(b *testing.B) {
+	buf := make([]byte, Stats64Size)
+	s := NewStats64(buf)
+	for i := 1; i < 10; i++ {
+		s.Update(float64(i))
+	}
+	b.ResetTimer()
+	var v float64
+	for i := 0; i < b.N; i++ {
+		v = s.Sum()
+	}
+	benchres = v
+}
+
+func BenchmarkStats64Count(b *testing.B) {
+	buf := make([]byte, Stats64Size)
+	s := NewStats64(buf)
+	for i := 1; i < 10; i++ {
+		s.Update(float64(i))
+	}
+	b.ResetTimer()
+	var v uint64
+	for i := 0; i < b.N; i++ {
+		v = s.Count()
+	}
+	benchres = v
+}
+
+func BenchmarkStats64Variance(b *testing.B) {
+	buf := make([]byte, Stats64Size)
+	s := NewStats64(buf)
+	for i := 1; i < 10; i++ {
+		s.Update(float64(i))
+	}
+	b.ResetTimer()
+	var v float64
+	for i := 0; i < b.N; i++ {
+		v = s.Variance()
+	}
+	benchres = v
+}

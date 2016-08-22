@@ -1,6 +1,6 @@
 // Package seqlock implements a simple example of a seqlock which
 // provides non-waiting reads on a data structure that is undergoing
-// consurrent writes.
+// concurrent writes.
 // See https://en.wikipedia.org/wiki/Seqlock
 package seqlock
 
@@ -58,7 +58,7 @@ func (s *Seqlock) Put(v [1024]byte) {
 
 // Update applies the update function to the data in the seqlock.
 // If the function returns an error then the update is aborted.
-func (s *Seqlock) Update(fn func(data []byte) error) {
+func (s *Seqlock) Update(fn func(data []byte) error) error {
 	// Writers need to take a lock
 	s.mu.Lock()
 
@@ -67,11 +67,13 @@ func (s *Seqlock) Update(fn func(data []byte) error) {
 
 	var d [1024]byte
 	copy(d[:], s.data[:])
-	if err := fn(d[:]); err == nil {
+	err := fn(d[:])
+	if err == nil {
 		copy(s.data[:], d[:])
 	}
 
 	// Notify readers that we are done
 	atomic.AddUint32(&s.seq, 1)
 	s.mu.Unlock()
+	return err
 }

@@ -1,4 +1,4 @@
-// Package incmap implements an write-only lock free map
+// Package incmap implements a write-only lock free map
 package incmap
 
 import (
@@ -30,7 +30,7 @@ const maxReprobe = 10
 // when the map is full.
 func (m *Map) Inc(k uint64, d uint64) bool {
 	// 0 is our value that indicates an empty slot so we can't accept
-	// it as a valifd key
+	// it as a valid key
 	if k == 0 {
 		return false
 	}
@@ -52,6 +52,12 @@ func (m *Map) Inc(k uint64, d uint64) bool {
 				// Stored key successfully
 				break
 			}
+		}
+
+		// Did another updater set the key while we were checking?
+		kexist = atomic.LoadUint64(&m.keys[x])
+		if kexist == k {
+			break
 		}
 
 		i++

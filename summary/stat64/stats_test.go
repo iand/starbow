@@ -23,24 +23,26 @@ func TestSummary(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		buf := make([]byte, Size)
-		s := New(buf)
-		for _, o := range tc.obs {
-			s.Update(o)
-		}
+		t.Run("", func(t *testing.T) {
+			buf := make([]byte, Size)
+			s := New(buf)
+			for _, o := range tc.obs {
+				s.Update(o)
+			}
 
-		if s.Count() != tc.count {
-			t.Errorf("case %d: got %v, wanted %v", i, s.Count(), tc.count)
-		}
-		if s.Sum() != tc.sum {
-			t.Errorf("case %d: got %v, wanted %v", i, s.Sum(), tc.sum)
-		}
-		if s.Mean() != tc.mean {
-			t.Errorf("case %d: got %v, wanted %v", i, s.Mean(), tc.mean)
-		}
-		if s.Variance() != tc.variance {
-			t.Errorf("case %d: got %v, wanted %v", i, s.Variance(), tc.variance)
-		}
+			if s.Count() != tc.count {
+				t.Errorf("case %d: got %v, wanted %v", i, s.Count(), tc.count)
+			}
+			if s.Sum() != tc.sum {
+				t.Errorf("case %d: got %v, wanted %v", i, s.Sum(), tc.sum)
+			}
+			if s.Mean() != tc.mean {
+				t.Errorf("case %d: got %v, wanted %v", i, s.Mean(), tc.mean)
+			}
+			if s.Variance() != tc.variance {
+				t.Errorf("case %d: got %v, wanted %v", i, s.Variance(), tc.variance)
+			}
+		})
 	}
 }
 
@@ -63,22 +65,24 @@ func TestSummaryUpdateMulti(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		buf := make([]byte, Size)
-		s := New(buf)
-		s.UpdateMulti(ObsList(tc.obs))
+		t.Run("", func(t *testing.T) {
+			buf := make([]byte, Size)
+			s := New(buf)
+			s.UpdateMulti(ObsList(tc.obs))
 
-		if s.Count() != tc.count {
-			t.Errorf("case %d: got count %v, wanted %v", i, s.Count(), tc.count)
-		}
-		if s.Sum() != tc.sum {
-			t.Errorf("case %d: got sum %v, wanted %v", i, s.Sum(), tc.sum)
-		}
-		if s.Mean() != tc.mean {
-			t.Errorf("case %d: got mean %v, wanted %v", i, s.Mean(), tc.mean)
-		}
-		if s.Variance() != tc.variance {
-			t.Errorf("case %d: got variance %v, wanted %v", i, s.Variance(), tc.variance)
-		}
+			if s.Count() != tc.count {
+				t.Errorf("case %d: got count %v, wanted %v", i, s.Count(), tc.count)
+			}
+			if s.Sum() != tc.sum {
+				t.Errorf("case %d: got sum %v, wanted %v", i, s.Sum(), tc.sum)
+			}
+			if s.Mean() != tc.mean {
+				t.Errorf("case %d: got mean %v, wanted %v", i, s.Mean(), tc.mean)
+			}
+			if s.Variance() != tc.variance {
+				t.Errorf("case %d: got variance %v, wanted %v", i, s.Variance(), tc.variance)
+			}
+		})
 	}
 }
 

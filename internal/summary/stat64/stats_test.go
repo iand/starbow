@@ -22,7 +22,7 @@ func TestSummary(t *testing.T) {
 		},
 	}
 
-	for i, tc := range testCases {
+	for _, tc := range testCases {
 		t.Run("", func(t *testing.T) {
 			buf := make([]byte, Size)
 			s := New(buf)
@@ -31,16 +31,16 @@ func TestSummary(t *testing.T) {
 			}
 
 			if s.Count() != tc.count {
-				t.Errorf("case %d: got %v, wanted %v", i, s.Count(), tc.count)
+				t.Errorf("got %v, wanted %v", s.Count(), tc.count)
 			}
 			if s.Sum() != tc.sum {
-				t.Errorf("case %d: got %v, wanted %v", i, s.Sum(), tc.sum)
+				t.Errorf("got %v, wanted %v", s.Sum(), tc.sum)
 			}
 			if s.Mean() != tc.mean {
-				t.Errorf("case %d: got %v, wanted %v", i, s.Mean(), tc.mean)
+				t.Errorf("got %v, wanted %v", s.Mean(), tc.mean)
 			}
 			if s.Variance() != tc.variance {
-				t.Errorf("case %d: got %v, wanted %v", i, s.Variance(), tc.variance)
+				t.Errorf("got %v, wanted %v", s.Variance(), tc.variance)
 			}
 		})
 	}
@@ -64,23 +64,23 @@ func TestSummaryUpdateMulti(t *testing.T) {
 		},
 	}
 
-	for i, tc := range testCases {
+	for _, tc := range testCases {
 		t.Run("", func(t *testing.T) {
 			buf := make([]byte, Size)
 			s := New(buf)
 			s.UpdateMulti(ObsList(tc.obs))
 
 			if s.Count() != tc.count {
-				t.Errorf("case %d: got count %v, wanted %v", i, s.Count(), tc.count)
+				t.Errorf("got count %v, wanted %v", s.Count(), tc.count)
 			}
 			if s.Sum() != tc.sum {
-				t.Errorf("case %d: got sum %v, wanted %v", i, s.Sum(), tc.sum)
+				t.Errorf("got sum %v, wanted %v", s.Sum(), tc.sum)
 			}
 			if s.Mean() != tc.mean {
-				t.Errorf("case %d: got mean %v, wanted %v", i, s.Mean(), tc.mean)
+				t.Errorf("got mean %v, wanted %v", s.Mean(), tc.mean)
 			}
 			if s.Variance() != tc.variance {
-				t.Errorf("case %d: got variance %v, wanted %v", i, s.Variance(), tc.variance)
+				t.Errorf("got variance %v, wanted %v", s.Variance(), tc.variance)
 			}
 		})
 	}

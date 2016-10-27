@@ -1,3 +1,4 @@
+// Package server implements a starbow node.
 package server
 
 import (

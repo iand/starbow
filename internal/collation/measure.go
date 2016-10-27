@@ -1,6 +1,8 @@
 package collation
 
 import (
+	"encoding/binary"
+	"math"
 	"time"
 )
 
@@ -52,15 +54,38 @@ type Count struct{}
 
 func (Count) ObsType() ObsType { return Any }
 
+func (Count) Size() int { return 8 }
+
+func (Count) Update(buf []byte) error {
+	c := binary.LittleEndian.Uint64(buf)
+	c++
+	binary.LittleEndian.PutUint64(buf, c)
+	return nil
+}
+
 // Sum is a precise sum of observations over all time.
 type Sum struct{}
 
 func (Sum) ObsType() ObsType { return Continuous }
 
+func (Sum) Size() int { return 8 }
+
+func (Sum) UpdateFloat64(buf []byte, v float64) error {
+	sum := math.Float64frombits(binary.LittleEndian.Uint64(buf))
+	sum += v
+	binary.LittleEndian.PutUint64(buf, math.Float64bits(sum))
+	return nil
+}
+
 // Mean is a precise mean of observations over all time.
 type Mean struct{}
 
 func (Mean) ObsType() ObsType { return Continuous }
+
+// Variance is a precise variance of observations over all time.
+type Variance struct{}
+
+func (Variance) ObsType() ObsType { return Continuous }
 
 // Approximate measures
 
@@ -77,6 +102,14 @@ type WindowedCount struct {
 }
 
 func (WindowedCount) ObsType() ObsType { return Any }
+
+// BucketedCount is an approximate count of observations within a series of equally sized time windows.
+type BucketedCount struct {
+	Buckets  int
+	Duration time.Duration
+}
+
+func (BucketedCount) ObsType() ObsType { return Any }
 
 // Cardinality is an approximate count of unique observations over all time.
 type Cardinality struct {

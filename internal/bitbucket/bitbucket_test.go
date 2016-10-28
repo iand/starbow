@@ -2,6 +2,7 @@ package bitbucket
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"testing"
 )
@@ -326,5 +327,38 @@ func TestReadFromChecksVersion(t *testing.T) {
 	_, err := bb.ReadFrom(r)
 	if err != ErrIncompatibleVersion {
 		t.Fatalf("got %v error, wanted ErrIncompatibleVersion", err)
+	}
+}
+
+var res interface{}
+
+func BenchmarkGet(b *testing.B) {
+	for w := 1; w < 9; w++ {
+		b.Run(fmt.Sprintf("width%d", w), func(b *testing.B) {
+			bb := New(100, uint8(w))
+			for i := 0; i < 100; i++ {
+				bb.Set(i, uint8(i%8))
+			}
+			b.ResetTimer()
+			b.ReportAllocs()
+			var x uint8
+			for i := 0; i < b.N; i++ {
+				x = bb.Get(i % 100)
+			}
+			res = x
+		})
+	}
+}
+
+func BenchmarkSet(b *testing.B) {
+	for w := 1; w < 9; w++ {
+		b.Run(fmt.Sprintf("width%d", w), func(b *testing.B) {
+			bb := New(100, uint8(w))
+			b.ResetTimer()
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				bb.Set(i%100, uint8(i%8))
+			}
+		})
 	}
 }

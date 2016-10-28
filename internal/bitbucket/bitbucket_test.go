@@ -319,3 +319,12 @@ func TestReadFromExtraData(t *testing.T) {
 		t.Fatalf("got %v error, wanted io.ErrShortBuffer", err)
 	}
 }
+
+func TestReadFromChecksVersion(t *testing.T) {
+	var bb BitBucket
+	r := bytes.NewReader([]byte{Version + 1, 8, 4, 0, 0, 0, 0, 0, 0, 0, 13, 22, 36, 199, 44}) // extra trailing byte
+	_, err := bb.ReadFrom(r)
+	if err != ErrIncompatibleVersion {
+		t.Fatalf("got %v error, wanted ErrIncompatibleVersion", err)
+	}
+}

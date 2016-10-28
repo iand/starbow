@@ -23,8 +23,11 @@ type BitBucket struct {
 }
 
 // New creates a new BitBucket with n buckets each consisting of w bits. When w is 1 then the
-// bitbucket is equivalent to a bitset.
+// bitbucket is equivalent to a bitset. Panics if w > 8.
 func New(n int, w uint8) *BitBucket {
+	if w > 8 {
+		panic("bitbucket: requested bucket width exceeds maximum of 8")
+	}
 	return &BitBucket{
 		n:    n,
 		w:    w,

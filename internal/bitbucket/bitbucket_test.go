@@ -272,11 +272,11 @@ func TestWriteTo(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if n != (1 + 8 + 4) {
-		t.Errorf("got %d bytes written, wanted %d", n, 1+8+4)
+	if n != (1 + 1 + 8 + 4) {
+		t.Errorf("got %d bytes written, wanted %d", n, 1+1+8+4)
 	}
 
-	expected := []byte{8, 4, 0, 0, 0, 0, 0, 0, 0, 13, 22, 36, 199}
+	expected := []byte{Version, 8, 4, 0, 0, 0, 0, 0, 0, 0, 13, 22, 36, 199}
 	actual := buf.Bytes()
 
 	if !bytes.Equal(actual, expected) {
@@ -286,14 +286,14 @@ func TestWriteTo(t *testing.T) {
 
 func TestReadFrom(t *testing.T) {
 	var bb BitBucket
-	r := bytes.NewReader([]byte{8, 4, 0, 0, 0, 0, 0, 0, 0, 13, 22, 36, 199})
+	r := bytes.NewReader([]byte{Version, 8, 4, 0, 0, 0, 0, 0, 0, 0, 13, 22, 36, 199})
 	n, err := bb.ReadFrom(r)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if n != (1 + 8 + 4) {
-		t.Errorf("got %d bytes read, wanted %d", n, 1+8+4)
+	if n != (1 + 1 + 8 + 4) {
+		t.Errorf("got %d bytes read, wanted %d", n, 1+1+8+4)
 	}
 
 	if bb.w != 8 {
@@ -313,7 +313,7 @@ func TestReadFrom(t *testing.T) {
 
 func TestReadFromExtraData(t *testing.T) {
 	var bb BitBucket
-	r := bytes.NewReader([]byte{8, 4, 0, 0, 0, 0, 0, 0, 0, 13, 22, 36, 199, 44}) // extra trailing byte
+	r := bytes.NewReader([]byte{Version, 8, 4, 0, 0, 0, 0, 0, 0, 0, 13, 22, 36, 199, 44}) // extra trailing byte
 	_, err := bb.ReadFrom(r)
 	if err != io.ErrShortBuffer {
 		t.Fatalf("got %v error, wanted io.ErrShortBuffer", err)

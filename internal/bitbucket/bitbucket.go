@@ -6,8 +6,13 @@ package bitbucket
 
 import (
 	"encoding/binary"
+	"errors"
 	"io"
 )
+
+const Version = 1
+
+var ErrIncompatibleVersion = errors.New("bitbucket: incompatible version")
 
 // A BitBucket is a collection of buckets capable of storing values from zero
 // up to maximum specified by the configured number of bits.
@@ -111,9 +116,10 @@ func (b *BitBucket) extract(o int, l uint8) (data uint16, shift uint16, mask uin
 // to the io.WriterTo interface protocol. The return value is the number
 // of bytes written. Any error encountered during the write is also returned.
 func (b *BitBucket) WriteTo(w io.Writer) (int64, error) {
-	var buf [9]byte
-	buf[0] = b.w
-	binary.LittleEndian.PutUint64(buf[1:9], uint64(b.n))
+	var buf [10]byte
+	buf[0] = Version
+	buf[1] = b.w
+	binary.LittleEndian.PutUint64(buf[2:10], uint64(b.n))
 
 	n, err := w.Write(buf[:])
 	if err != nil {
@@ -135,7 +141,7 @@ func (b *BitBucket) WriteTo(w io.Writer) (int64, error) {
 // number of bytes read. Any error except io.EOF encountered during the read
 // is also returned.
 func (b *BitBucket) ReadFrom(r io.Reader) (int64, error) {
-	var buf [9]byte
+	var buf [10]byte
 
 	n, err := io.ReadFull(r, buf[:])
 	if err != nil {
@@ -145,8 +151,13 @@ func (b *BitBucket) ReadFrom(r io.Reader) (int64, error) {
 		return int64(n), err
 	}
 
-	b.w = buf[0]
-	b.n = int(binary.LittleEndian.Uint64(buf[1:9]))
+	version := buf[0]
+	if version != Version {
+		return int64(n), ErrIncompatibleVersion
+	}
+
+	b.w = buf[1]
+	b.n = int(binary.LittleEndian.Uint64(buf[2:10]))
 	b.data = make([]byte, length(b.n, b.w))
 
 	n0, err := io.ReadFull(r, b.data)
@@ -182,5 +193,5 @@ func (b *BitBucket) Max() uint8 {
 
 // Len returns the length of the buffer required to serialize the bit bucket.
 func (b *BitBucket) Len() int {
-	return 1 + 8 + len(b.data)
+	return 1 + 1 + 8 + len(b.data)
 }

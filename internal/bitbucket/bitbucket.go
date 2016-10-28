@@ -198,3 +198,13 @@ func (b *BitBucket) Max() uint8 {
 func (b *BitBucket) Len() int {
 	return 1 + 1 + 8 + len(b.data)
 }
+
+// Count returns the number of buckets.
+func (b *BitBucket) Count() int {
+	return b.n
+}
+
+// Width returns the bit width of the buckets.
+func (b *BitBucket) Width() uint8 {
+	return b.w
+}

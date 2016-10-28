@@ -17,7 +17,8 @@ type BitBucket struct {
 	w    uint8
 }
 
-// New creates a new BitBucket with n buckets each consisting of w bits.
+// New creates a new BitBucket with n buckets each consisting of w bits. When w is 1 then the
+// bitbucket is equivalent to a bitset.
 func New(n int, w uint8) *BitBucket {
 	return &BitBucket{
 		n:    n,

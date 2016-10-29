@@ -204,7 +204,24 @@ func (b *BitBucket) Count() int {
 	return b.n
 }
 
+// CountN returns the number of buckets that have the value v.
+// TODO: optimize CountN by iterating through raw byte slice
+func (b *BitBucket) CountN(v uint8) int {
+	n := 0
+	for i := 0; i < b.n; i++ {
+		if b.Get(i) == v {
+			n++
+		}
+	}
+	return n
+}
+
 // Width returns the bit width of the buckets.
 func (b *BitBucket) Width() uint8 {
 	return b.w
+}
+
+// Len returns the length of the buffer required to serialize a bit bucket with n buckets each of width w bits.
+func Len(n int, w uint8) int {
+	return 1 + 1 + 8 + length(n, w)
 }

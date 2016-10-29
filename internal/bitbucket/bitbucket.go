@@ -10,7 +10,10 @@ import (
 	"io"
 )
 
-const Version = 1
+const (
+	Version = 1
+	hdrLen  = 10 // number of bytes needed for header data when serializing (version, n and w)
+)
 
 var ErrIncompatibleVersion = errors.New("bitbucket: incompatible version")
 
@@ -119,10 +122,10 @@ func (b *BitBucket) extract(o int, l uint8) (data uint16, shift uint16, mask uin
 // to the io.WriterTo interface protocol. The return value is the number
 // of bytes written. Any error encountered during the write is also returned.
 func (b *BitBucket) WriteTo(w io.Writer) (int64, error) {
-	var buf [10]byte
+	var buf [hdrLen]byte
 	buf[0] = Version
 	buf[1] = b.w
-	binary.LittleEndian.PutUint64(buf[2:10], uint64(b.n))
+	binary.LittleEndian.PutUint64(buf[2:hdrLen], uint64(b.n))
 
 	n, err := w.Write(buf[:])
 	if err != nil {
@@ -144,7 +147,7 @@ func (b *BitBucket) WriteTo(w io.Writer) (int64, error) {
 // number of bytes read. Any error except io.EOF encountered during the read
 // is also returned.
 func (b *BitBucket) ReadFrom(r io.Reader) (int64, error) {
-	var buf [10]byte
+	var buf [hdrLen]byte
 
 	n, err := io.ReadFull(r, buf[:])
 	if err != nil {
@@ -160,7 +163,7 @@ func (b *BitBucket) ReadFrom(r io.Reader) (int64, error) {
 	}
 
 	b.w = buf[1]
-	b.n = int(binary.LittleEndian.Uint64(buf[2:10]))
+	b.n = int(binary.LittleEndian.Uint64(buf[2:hdrLen]))
 	b.data = make([]byte, length(b.n, b.w))
 
 	n0, err := io.ReadFull(r, b.data)

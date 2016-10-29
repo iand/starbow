@@ -182,7 +182,7 @@ func (b *BitBucket) ReadFrom(r io.Reader) (int64, error) {
 	return int64(n), nil
 }
 
-// Reset resets the bit bucket to be empty, but it retains the underlying storage for use by future writes.
+// Reset resets the bit bucket to be empty retaining the underlying allocated storage for use by future writes.
 func (b *BitBucket) Reset() {
 	for i := range b.data {
 		b.data[i] = 0

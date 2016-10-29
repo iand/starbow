@@ -2,6 +2,8 @@
 package bloom
 
 import (
+	"errors"
+	"io"
 	"math"
 
 	"github.com/iand/starbow/internal/bitbucket"
@@ -9,8 +11,11 @@ import (
 )
 
 const (
-	hdrLen = 2 // number of bytes needed for header data when serializing (version + number of hash functions)
+	Version = 1 // Serialization version numnber
+	hdrLen  = 2 // number of bytes needed for header data when serializing (version + number of hash functions)
 )
+
+var ErrIncompatibleVersion = errors.New("bloom: incompatible version")
 
 // Bloom is a bloom filter which can be used to probabilisticly test whether an item is a
 // member of a set. False positives are possible but false negatives are not.
@@ -90,6 +95,80 @@ func (b *Bloom) Count() int {
 func (b *Bloom) ErrorRate() float64 {
 	x := b.bits.CountN(1)
 	return math.Pow(1-math.Exp(-float64(b.k)*float64(x)/float64(b.m)), float64(b.k))
+}
+
+// WriteTo writes a binary representation of the bloom filter to w. It adheres
+// to the io.WriterTo interface protocol. The return value is the number
+// of bytes written. Any error encountered during the write is also returned.
+func (b *Bloom) WriteTo(w io.Writer) (int64, error) {
+	var buf [hdrLen]byte
+	buf[0] = Version
+	buf[1] = b.k
+
+	n, err := w.Write(buf[:])
+	if err != nil {
+		return int64(n), err
+	}
+
+	n0, err := b.bits.WriteTo(w)
+	n += int(n0)
+	if err != nil {
+		return int64(n), err
+	}
+
+	return int64(n), nil
+}
+
+// ReadFrom reads a binary representation of the bloom filter from r overwriting
+// any previous configuration. It adheres to the io.ReaderFrom interface
+// protocol. It reads data from r until EOF or error. The return value n is the
+// number of bytes read. Any error except io.EOF encountered during the read
+// is also returned.
+func (b *Bloom) ReadFrom(r io.Reader) (int64, error) {
+	var buf [hdrLen]byte
+
+	n, err := io.ReadFull(r, buf[:])
+	if err != nil {
+		if err == io.EOF {
+			return int64(n), io.ErrUnexpectedEOF
+		}
+		return int64(n), err
+	}
+
+	version := buf[0]
+	if version != Version {
+		return int64(n), ErrIncompatibleVersion
+	}
+
+	b.k = buf[1]
+
+	if b.bits == nil {
+		b.bits = &bitbucket.BitBucket{}
+	}
+
+	n0, err := b.bits.ReadFrom(r)
+	n += int(n0)
+	if err != nil {
+		if err == io.EOF {
+			return int64(n), io.ErrUnexpectedEOF
+		}
+		return int64(n), err
+	}
+	b.m = b.bits.Count()
+
+	n1, err := r.Read(buf[:])
+	n += n1
+	if err != io.EOF {
+		// Unexpected trailing data
+		return int64(n), io.ErrShortBuffer
+	}
+
+	return int64(n), nil
+}
+
+// Reset resets the bloom filter to be empty retaining the underlying allocated storage for use by future writes.
+func (b *Bloom) Reset() {
+	b.bits.Reset()
 }
 
 // hasher provides double hashing as per Dillinger, Peter C.; Manolios,

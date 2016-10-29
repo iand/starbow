@@ -1,9 +1,12 @@
 package bloom
 
 import (
+	"bytes"
+	"io"
 	"math/rand"
 	"testing"
 
+	"github.com/iand/starbow/internal/bitbucket"
 	"github.com/iand/starbow/internal/testutil"
 )
 
@@ -92,5 +95,95 @@ func TestCount(t *testing.T) {
 	count := bf.Count()
 	if count < 49950 || count > 50050 {
 		t.Errorf("got %d, wanted around 50000", count)
+	}
+}
+
+func TestWriteTo(t *testing.T) {
+	var buf bytes.Buffer
+
+	bf := NewBits(256, 3)
+	n, err := bf.WriteTo(&buf)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	bb := bitbucket.New(256, 1)
+
+	expectedLen := int64(hdrLen + bb.Len())
+	if n != expectedLen {
+		t.Errorf("got %d bytes written, wanted %d", n, expectedLen)
+	}
+
+	// Get a serialized form of the equivalent bit bucket
+	var bbBuf bytes.Buffer
+	bb.WriteTo(&bbBuf)
+
+	expected := append([]byte{Version, 3}, bbBuf.Bytes()...)
+	actual := buf.Bytes()
+
+	if !bytes.Equal(actual, expected) {
+		t.Errorf("got %+v, wanted %+v", actual, expected)
+	}
+}
+
+func serialize(bf *Bloom) []byte {
+	var buf bytes.Buffer
+	bf.WriteTo(&buf)
+	return buf.Bytes()
+}
+
+func TestReadFrom(t *testing.T) {
+	bf := NewBits(256, 3)
+	bf.Add([]byte("xyz"))
+
+	data := serialize(bf)
+	t.Logf("%+v", data)
+
+	r := bytes.NewReader(data)
+
+	var bf2 Bloom
+	n, err := bf2.ReadFrom(r)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if int(n) != len(data) {
+		t.Errorf("got %d bytes read, wanted %d", n, len(data))
+	}
+
+	if bf2.k != 3 {
+		t.Errorf("got %d hash functions, wanted %d", bf2.k, 3)
+	}
+
+	if bf2.m != 256 {
+		t.Errorf("got %d bits, wanted %d", bf2.m, 256)
+	}
+
+	if !bf2.Has([]byte("xyz")) {
+		t.Errorf("did not find xyz")
+	}
+}
+
+func TestReadFromExtraData(t *testing.T) {
+	bf := NewBits(256, 3)
+	data := serialize(bf)
+	data = append(data, 44) // extra trailing byte
+
+	r := bytes.NewReader(data)
+	_, err := bf.ReadFrom(r)
+	if err != io.ErrShortBuffer {
+		t.Fatalf("got %v error, wanted io.ErrShortBuffer", err)
+	}
+}
+
+func TestReadFromChecksVersion(t *testing.T) {
+	bf := NewBits(256, 3)
+	data := serialize(bf)
+	data[0] = Version + 1
+
+	r := bytes.NewReader(data)
+	_, err := bf.ReadFrom(r)
+	if err != ErrIncompatibleVersion {
+		t.Fatalf("got %v error, wanted ErrIncompatibleVersion", err)
 	}
 }

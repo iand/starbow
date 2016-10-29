@@ -29,7 +29,11 @@ func New(n int, p float64) *Bloom {
 
 func mk(n int, p float64) (int, uint8) {
 	m := int(math.Ceil(-float64(n) * math.Log(p) / (math.Ln2 * math.Ln2)))
-	k := uint8(math.Ln2 * float64(m) / float64(n))
+	kraw := math.Ceil(math.Ln2 * float64(m) / float64(n))
+	var k uint8 = 255
+	if kraw < 255 {
+		k = uint8(kraw)
+	}
 
 	return m, k
 }

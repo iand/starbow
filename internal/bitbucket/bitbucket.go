@@ -16,6 +16,7 @@ const (
 )
 
 var ErrIncompatibleVersion = errors.New("bitbucket: incompatible version")
+var ErrUnsupportedWidth = errors.New("bitbucket: requested bucket width exceeds maximum of 8")
 
 // A BitBucket is a collection of buckets capable of storing values from zero
 // up to maximum specified by the configured number of bits.
@@ -29,13 +30,45 @@ type BitBucket struct {
 // bitbucket is equivalent to a bitset. Panics if w > 8.
 func New(n int, w uint8) *BitBucket {
 	if w > 8 {
-		panic("bitbucket: requested bucket width exceeds maximum of 8")
+		panic(ErrUnsupportedWidth)
 	}
 	return &BitBucket{
 		n:    n,
 		w:    w,
 		data: make([]byte, length(n, w)),
 	}
+}
+
+// WithBytes creates a new bit bucket that uses buf as its backing storage, preserving any
+// existing data in the byte slice. The layout of the byte buffer must match the layout used by
+// the WriteTo method on an equivalent bit bucket.
+func WithBytes(buf []byte) (*BitBucket, error) {
+	if len(buf) < hdrLen {
+		return nil, io.ErrShortBuffer
+	}
+
+	version := buf[0]
+	if version != Version {
+		return nil, ErrIncompatibleVersion
+	}
+
+	w := buf[1]
+	if w > 8 {
+		return nil, ErrUnsupportedWidth
+	}
+
+	n := int(binary.LittleEndian.Uint64(buf[2:hdrLen]))
+
+	buflen := length(n, w)
+	if len(buf) < hdrLen+buflen {
+		return nil, io.ErrShortBuffer
+	}
+
+	return &BitBucket{
+		n:    n,
+		w:    w,
+		data: buf[hdrLen : hdrLen+buflen],
+	}, nil
 }
 
 // length calculates the length of byte slice needed to accommodate n buckets of w bits

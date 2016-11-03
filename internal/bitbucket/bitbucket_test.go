@@ -330,6 +330,44 @@ func TestReadFromChecksVersion(t *testing.T) {
 	}
 }
 
+func TestWithBytes(t *testing.T) {
+	data := []byte{Version, 8, 4, 0, 0, 0, 0, 0, 0, 0, 13, 22, 36, 199}
+
+	bb, err := WithBytes(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if bb.w != 8 {
+		t.Errorf("got %d width, wanted %d", bb.w, 8)
+	}
+
+	if bb.n != 4 {
+		t.Errorf("got %d buckets, wanted %d", bb.n, 4)
+	}
+
+	expected := []byte{13, 22, 36, 199}
+
+	if !bytes.Equal(bb.data, expected) {
+		t.Errorf("got %+v, wanted %+v", bb.data, expected)
+	}
+}
+
+func TestWithBytesAdoptsBuffer(t *testing.T) {
+	data := []byte{Version, 8, 4, 0, 0, 0, 0, 0, 0, 0, 13, 22, 36, 199}
+
+	bb, err := WithBytes(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	bb.Set(3, 20)
+	if data[13] != 20 {
+		t.Logf("data: %+v", data)
+		t.Errorf("got %v, wanted 20", data[13])
+	}
+}
+
 var res interface{}
 
 func BenchmarkGet(b *testing.B) {

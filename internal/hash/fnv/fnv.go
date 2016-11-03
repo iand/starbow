@@ -222,3 +222,23 @@ func String64a(str string) uint64 {
 	}
 	return uint64(hash)
 }
+
+// Sum64 returns a 64-bit hash of buf using the FNV-1 algorithm.
+func Sum64(buf []byte) uint64 {
+	hash := uint64(offset64)
+	for _, b := range buf {
+		hash *= prime64
+		hash ^= uint64(b)
+	}
+	return uint64(hash)
+}
+
+// Sum64a returns a 64-bit hash of buf using the FNV-1a algorithm.
+func Sum64a(buf []byte) uint64 {
+	hash := uint64(offset64)
+	for _, b := range buf {
+		hash ^= uint64(b)
+		hash *= prime64
+	}
+	return uint64(hash)
+}

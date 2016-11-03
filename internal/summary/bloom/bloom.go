@@ -86,9 +86,9 @@ func Len(n int, p float64) int {
 }
 
 // Count returns an estimate of the number of items that have been added to the bloom filter.
-func (b *Bloom) Count() int {
+func (b *Bloom) Count() int64 {
 	x := b.bits.CountN(1)
-	return int(math.Ceil(-math.Log(1-float64(x)/float64(b.m)) * float64(b.m) / float64(b.k)))
+	return int64(math.Ceil(-math.Log(1-float64(x)/float64(b.m)) * float64(b.m) / float64(b.k)))
 }
 
 // ErrorRate returns an estimate of the rate of false positives returned by the bloom filter's Has method.

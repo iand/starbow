@@ -32,3 +32,12 @@ func Sum(vals []float64) float64 {
 	}
 	return sum
 }
+
+// See calculates the standard error of the estimate
+func See(vals []float64, e float64) float64 {
+	errsum := 0.0
+	for _, v := range vals {
+		errsum += (v - e) * (v - e)
+	}
+	return math.Sqrt(errsum / float64(len(vals)-2))
+}

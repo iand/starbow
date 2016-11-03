@@ -15,7 +15,7 @@ func RandomByteSlice(n int, rng Rand) []byte {
 // FillRandomByteSlice fills a byte slice with n random bytes using rng as the source of randomness.
 func FillRandomByteSlice(buf []byte, rng Rand) {
 	for i := range buf {
-		buf[i] = Printable(rng)
+		buf[i] = byte(rng.Intn(256))
 	}
 }
 
@@ -32,4 +32,36 @@ func RandomByteSlices(m, n int, rng Rand) [][]byte {
 		FillRandomByteSlice(bufs[i], rng)
 	}
 	return bufs
+}
+
+// ShuffleRepeated returns n byte slices drawn randomly from src. If n is
+// larger than len(src) then it will draw entries at random from src to fill
+// the spare space ensuring that each entry from src appears at least once.
+func ShuffleRepeated(n int, src [][]byte, rng Rand) [][]byte {
+	dest := make([][]byte, n)
+	if len(dest) <= len(src) {
+		for i := range dest {
+			dest[i] = src[i]
+		}
+		Shuffle(dest, rng)
+		return dest
+	}
+
+	for i := range src {
+		dest[i] = src[i]
+	}
+
+	for i := len(src); i < len(dest); i++ {
+		dest[i] = src[rng.Intn(len(src))]
+	}
+
+	Shuffle(dest, rng)
+	return dest
+}
+
+func Shuffle(buf [][]byte, rng Rand) {
+	for i := len(buf) - 1; i >= 0; i-- {
+		j := rng.Intn(i + 1)
+		buf[i], buf[j] = buf[j], buf[i]
+	}
 }

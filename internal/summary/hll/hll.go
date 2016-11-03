@@ -311,8 +311,28 @@ func (c *Counter) ReadFrom(r io.Reader) (int64, error) {
 	return int64(n), nil
 }
 
+// Len returns the length of the buffer required to serialize the counter.
+func (c *Counter) Len() int {
+	return hdrLen + c.bits.Len()
+}
+
+// Reset reverts the counter to a zero count without reallocating the backing buffer.
+func (b *Counter) Reset() {
+	b.bits.Reset()
+}
+
+// Len returns the length of the buffer required to serialize a counter with precision p
+// which must be in the range [4,18]
+func Len(p uint8) int {
+	m := int(1 << uint(p))
+	return hdrLen + bitbucket.Len(m, 6)
+}
+
 var (
-	// Linear counting thresholds calculated empirically at http://goo.gl/iU8Ig
+	// Linear counting thresholds calculated empirically and published as
+	// supplemental data to Heule, Stefan; Nunkesser, Marc (2013) "HyperLogLog
+	// in Practice: Algorithmic Engineering of a State of The Art Cardinality
+	// Estimation Algorithm". Available at http://goo.gl/iU8Ig
 	thresholds = map[uint8]float64{
 		4:  10,
 		5:  20,

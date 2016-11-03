@@ -188,12 +188,9 @@ func BenchmarkEstimators(b *testing.B) {
 }
 
 func TestWriteTo(t *testing.T) {
+	c := smallCounter()
+
 	var buf bytes.Buffer
-
-	c := New(6)
-	c.Add([]byte("the sun has got his hat on"))
-	c.Add([]byte("hip hip hip hooray"))
-
 	n, err := c.WriteTo(&buf)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -212,10 +209,7 @@ func serialize(c Counter) []byte {
 }
 
 func TestReadFrom(t *testing.T) {
-	cOrig := New(6)
-	cOrig.Add([]byte("the sun has got his hat on"))
-	cOrig.Add([]byte("hip hip hip hooray"))
-
+	cOrig := smallCounter()
 	data := serialize(cOrig)
 	t.Logf("%+v", data)
 
@@ -238,10 +232,7 @@ func TestReadFrom(t *testing.T) {
 }
 
 func TestReadFromExtraData(t *testing.T) {
-	cOrig := New(6)
-	cOrig.Add([]byte("the sun has got his hat on"))
-	cOrig.Add([]byte("hip hip hip hooray"))
-
+	cOrig := smallCounter()
 	data := serialize(cOrig)
 	data = append(data, 44) // extra trailing byte
 
@@ -254,10 +245,7 @@ func TestReadFromExtraData(t *testing.T) {
 }
 
 func TestReadFromChecksVersion(t *testing.T) {
-	cOrig := New(6)
-	cOrig.Add([]byte("the sun has got his hat on"))
-	cOrig.Add([]byte("hip hip hip hooray"))
-
+	cOrig := smallCounter()
 	data := serialize(cOrig)
 	data[0] = Version + 1
 
@@ -270,10 +258,7 @@ func TestReadFromChecksVersion(t *testing.T) {
 }
 
 func TestWithBytes(t *testing.T) {
-	cOrig := New(6)
-	cOrig.Add([]byte("the sun has got his hat on"))
-	cOrig.Add([]byte("hip hip hip hooray"))
-
+	cOrig := smallCounter()
 	data := serialize(cOrig)
 
 	c, err := WithBytes(data)
@@ -293,9 +278,7 @@ func TestWithBytes(t *testing.T) {
 }
 
 func TestWithBytesAdoptsBuffer(t *testing.T) {
-	cOrig := New(6)
-	cOrig.Add([]byte("the sun has got his hat on"))
-	cOrig.Add([]byte("hip hip hip hooray"))
+	cOrig := smallCounter()
 
 	data := serialize(cOrig)
 
@@ -320,9 +303,7 @@ func TestWithBytesAdoptsBuffer(t *testing.T) {
 }
 
 func TestWithBytesDoesNotAllocate(t *testing.T) {
-	cOrig := New(6)
-	cOrig.Add([]byte("the sun has got his hat on"))
-	cOrig.Add([]byte("hip hip hip hooray"))
+	cOrig := smallCounter()
 
 	data := serialize(cOrig)
 
@@ -335,4 +316,31 @@ func TestWithBytesDoesNotAllocate(t *testing.T) {
 	if allocs != 0 {
 		t.Errorf("got %f allocations, wanted none", allocs)
 	}
+}
+
+func TestLen(t *testing.T) {
+	c := New(6)
+	expected := c.Len()
+	actual := Len(6)
+	if actual != expected {
+		t.Errorf("got %v, wanted %v", actual, expected)
+	}
+}
+
+func TestResetDoesNotAllocate(t *testing.T) {
+	c := smallCounter()
+
+	allocs := testing.AllocsPerRun(100, func() {
+		c.Reset()
+	})
+	if allocs != 0 {
+		t.Errorf("got %f allocations, wanted none", allocs)
+	}
+}
+
+func smallCounter() Counter {
+	c := New(6)
+	c.Add([]byte("the sun has got his hat on"))
+	c.Add([]byte("hip hip hip hooray"))
+	return c
 }

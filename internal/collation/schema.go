@@ -132,3 +132,12 @@ type contWriter struct {
 func (c contWriter) UpdateFloat64(buf []byte, v float64) error {
 	return c.Fn(buf[c.Low:c.High], v)
 }
+
+type discWriter struct {
+	Low, High int // index range of data within buffer
+	Fn        func(buf []byte, v []byte) error
+}
+
+func (d discWriter) UpdateItem(buf []byte, v []byte) error {
+	return d.Fn(buf[d.Low:d.High], v)
+}

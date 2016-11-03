@@ -189,7 +189,7 @@ func (b *Bloom) ReadFrom(r io.Reader) (int64, error) {
 	return int64(n), nil
 }
 
-// Reset resets the bloom filter to be empty retaining the underlying allocated storage for use by future writes.
+// Reset reverts the bloom filter to a zero count without reallocating the backing buffer.
 func (b *Bloom) Reset() {
 	b.bits.Reset()
 }

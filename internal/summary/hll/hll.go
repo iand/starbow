@@ -22,12 +22,12 @@ const (
 var ErrIncompatibleVersion = errors.New("hll: incompatible version")
 
 // New creates a new hyperloglog++ counter with the specified precision. p must be in the range [4,18]
-func New(p uint8) *Counter {
+func New(p uint8) Counter {
 	if p < 4 || p > 18 {
 		panic("hll: precision p must be in range [4,18]")
 	}
 	m := int(1 << uint(p))
-	c := &Counter{
+	c := Counter{
 		p:         p,
 		mask:      ((1 << p) - 1) << (64 - p),
 		bits:      bitbucket.New(m, 6),
@@ -52,7 +52,7 @@ func New(p uint8) *Counter {
 type Counter struct {
 	p    uint8 // precision
 	mask uint64
-	bits *bitbucket.BitBucket
+	bits bitbucket.BitBucket
 
 	alpha     float64
 	threshold float64

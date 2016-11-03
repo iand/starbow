@@ -139,7 +139,7 @@ func BenchmarkEstimators(b *testing.B) {
 			for i := range data {
 				c.Add(data[i])
 			}
-			fn := tc.fn(c)
+			fn := tc.fn(&c)
 
 			b.ReportAllocs()
 			b.ResetTimer()

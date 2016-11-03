@@ -21,15 +21,38 @@ var ErrIncompatibleVersion = errors.New("bloom: incompatible version")
 // member of a set. False positives are possible but false negatives are not.
 // Items may be added but cannot be removed from the set.
 type Bloom struct {
-	bits *bitbucket.BitBucket
+	bits bitbucket.BitBucket
 	m    int   // number of bits in bloom filter
 	k    uint8 // number of hash functions
 }
 
 // New creates a new bloom filter suitable for storing n items with a false positive rate of p.
-func New(n int, p float64) *Bloom {
+func New(n int, p float64) Bloom {
 	m, k := mk(n, p)
 	return NewBits(m, k)
+}
+
+// WithBytes creates a new bloom filter that uses buf as its backing storage,
+// preserving any existing data in the byte slice. Any subsequent writes to
+// the bloom filter will mutate buf. The layout of the byte buffer must match
+// the layout used by the WriteTo method.
+func WithBytes(buf []byte) (Bloom, error) {
+	version := buf[0]
+	if version != Version {
+		return Bloom{}, ErrIncompatibleVersion
+	}
+
+	k := buf[1]
+	bits, err := bitbucket.WithBytes(buf[2:])
+	if err != nil {
+		return Bloom{}, err
+	}
+
+	return Bloom{
+		m:    bits.Count(),
+		k:    k,
+		bits: bits,
+	}, nil
 }
 
 func mk(n int, p float64) (int, uint8) {
@@ -44,8 +67,8 @@ func mk(n int, p float64) (int, uint8) {
 }
 
 // NewBits creates a new bloom filter with m bits and k hash functions.
-func NewBits(m int, k uint8) *Bloom {
-	return &Bloom{
+func NewBits(m int, k uint8) Bloom {
+	return Bloom{
 		m:    m,
 		k:    k,
 		bits: bitbucket.New(m, 1),
@@ -141,10 +164,7 @@ func (b *Bloom) ReadFrom(r io.Reader) (int64, error) {
 	}
 
 	b.k = buf[1]
-
-	if b.bits == nil {
-		b.bits = &bitbucket.BitBucket{}
-	}
+	b.bits = bitbucket.BitBucket{}
 
 	n0, err := b.bits.ReadFrom(r)
 	n += int(n0)

@@ -126,7 +126,7 @@ func TestWriteTo(t *testing.T) {
 	}
 }
 
-func serialize(bf *Bloom) []byte {
+func serialize(bf Bloom) []byte {
 	var buf bytes.Buffer
 	bf.WriteTo(&buf)
 	return buf.Bytes()
@@ -185,5 +185,45 @@ func TestReadFromChecksVersion(t *testing.T) {
 	_, err := bf.ReadFrom(r)
 	if err != ErrIncompatibleVersion {
 		t.Fatalf("got %v error, wanted ErrIncompatibleVersion", err)
+	}
+}
+
+func TestWithBytes(t *testing.T) {
+	bf := NewBits(256, 3)
+	bf.Add([]byte("xyz"))
+
+	data := serialize(bf)
+
+	bf2, err := WithBytes(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if bf2.k != 3 {
+		t.Errorf("got %d hash functions, wanted %d", bf2.k, 3)
+	}
+
+	if bf2.m != 256 {
+		t.Errorf("got %d bits, wanted %d", bf2.m, 256)
+	}
+
+	if !bf2.Has([]byte("xyz")) {
+		t.Errorf("did not find xyz")
+	}
+}
+
+func TestWithBytesDoesNotAllocate(t *testing.T) {
+	bf := NewBits(256, 3)
+	bf.Add([]byte("xyz"))
+
+	data := serialize(bf)
+	allocs := testing.AllocsPerRun(1000, func() {
+		_, err := WithBytes(data)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+	if allocs != 0 {
+		t.Errorf("got %f allocations, wanted none", allocs)
 	}
 }

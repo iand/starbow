@@ -368,6 +368,19 @@ func TestWithBytesAdoptsBuffer(t *testing.T) {
 	}
 }
 
+func TestWithBytesDoesNotAllocate(t *testing.T) {
+	data := []byte{Version, 8, 4, 0, 0, 0, 0, 0, 0, 0, 13, 22, 36, 199}
+	allocs := testing.AllocsPerRun(1000, func() {
+		_, err := WithBytes(data)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+	if allocs != 0 {
+		t.Errorf("got %f allocations, wanted none", allocs)
+	}
+}
+
 var res interface{}
 
 func BenchmarkGet(b *testing.B) {

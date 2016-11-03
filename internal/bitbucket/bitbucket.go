@@ -28,43 +28,44 @@ type BitBucket struct {
 
 // New creates a new BitBucket with n buckets each consisting of w bits. When w is 1 then the
 // bitbucket is equivalent to a bitset. Panics if w > 8.
-func New(n int, w uint8) *BitBucket {
+func New(n int, w uint8) BitBucket {
 	if w > 8 {
 		panic(ErrUnsupportedWidth)
 	}
-	return &BitBucket{
+	return BitBucket{
 		n:    n,
 		w:    w,
 		data: make([]byte, length(n, w)),
 	}
 }
 
-// WithBytes creates a new bit bucket that uses buf as its backing storage, preserving any
-// existing data in the byte slice. The layout of the byte buffer must match the layout used by
-// the WriteTo method on an equivalent bit bucket.
-func WithBytes(buf []byte) (*BitBucket, error) {
+// WithBytes creates a new bit bucket that uses buf as its backing storage,
+// preserving any existing data in the byte slice. Any subsequent writes to
+// the bloom filter will mutate buf. The layout of the byte buffer must match
+// the layout used by the WriteTo method on an equivalent bit bucket.
+func WithBytes(buf []byte) (BitBucket, error) {
 	if len(buf) < hdrLen {
-		return nil, io.ErrShortBuffer
+		return BitBucket{}, io.ErrShortBuffer
 	}
 
 	version := buf[0]
 	if version != Version {
-		return nil, ErrIncompatibleVersion
+		return BitBucket{}, ErrIncompatibleVersion
 	}
 
 	w := buf[1]
 	if w > 8 {
-		return nil, ErrUnsupportedWidth
+		return BitBucket{}, ErrUnsupportedWidth
 	}
 
 	n := int(binary.LittleEndian.Uint64(buf[2:hdrLen]))
 
 	buflen := length(n, w)
 	if len(buf) < hdrLen+buflen {
-		return nil, io.ErrShortBuffer
+		return BitBucket{}, io.ErrShortBuffer
 	}
 
-	return &BitBucket{
+	return BitBucket{
 		n:    n,
 		w:    w,
 		data: buf[hdrLen : hdrLen+buflen],

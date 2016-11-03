@@ -1,9 +1,12 @@
 package hll
 
 import (
+	"bytes"
+	"io"
 	"math/rand"
 	"testing"
 
+	"github.com/iand/starbow/internal/bitbucket"
 	"github.com/iand/starbow/internal/stats"
 	"github.com/iand/starbow/internal/testutil"
 )
@@ -62,6 +65,38 @@ func TestCount(t *testing.T) {
 			}
 
 		})
+	}
+}
+
+func TestAddDoesNotAllocate(t *testing.T) {
+	rng := rand.New(rand.NewSource(121121312))
+	data := testutil.RandomByteSlices(101, 12, rng) // 101 since AllocsPerRun does a warm up
+	c := New(6)
+	i := 0
+
+	allocs := testing.AllocsPerRun(100, func() {
+		c.Add(data[i])
+		i++
+	})
+	if allocs != 0 {
+		t.Errorf("got %f allocations, wanted none", allocs)
+	}
+}
+
+func TestCountDoesNotAllocate(t *testing.T) {
+	rng := rand.New(rand.NewSource(121121312))
+	data := testutil.RandomByteSlices(100, 12, rng)
+	c := New(6)
+	for i := range data {
+		c.Add(data[i])
+	}
+
+	var x int64
+	allocs := testing.AllocsPerRun(100, func() {
+		x = c.Count()
+	})
+	if allocs != 0 {
+		t.Errorf("got %f allocations, wanted none", allocs)
 	}
 }
 
@@ -149,5 +184,155 @@ func BenchmarkEstimators(b *testing.B) {
 			}
 			res = x
 		})
+	}
+}
+
+func TestWriteTo(t *testing.T) {
+	var buf bytes.Buffer
+
+	c := New(6)
+	c.Add([]byte("the sun has got his hat on"))
+	c.Add([]byte("hip hip hip hooray"))
+
+	n, err := c.WriteTo(&buf)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expectedLen := int64(hdrLen + bitbucket.Len(64, 6))
+	if n != expectedLen {
+		t.Errorf("got %d bytes written, wanted %d", n, expectedLen)
+	}
+}
+
+func serialize(c Counter) []byte {
+	var buf bytes.Buffer
+	c.WriteTo(&buf)
+	return buf.Bytes()
+}
+
+func TestReadFrom(t *testing.T) {
+	cOrig := New(6)
+	cOrig.Add([]byte("the sun has got his hat on"))
+	cOrig.Add([]byte("hip hip hip hooray"))
+
+	data := serialize(cOrig)
+	t.Logf("%+v", data)
+
+	r := bytes.NewReader(data)
+
+	var c Counter
+	n, err := c.ReadFrom(r)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if int(n) != len(data) {
+		t.Errorf("got %d bytes read, wanted %d", n, len(data))
+	}
+
+	if c.p != 6 {
+		t.Errorf("got precision %d, wanted %d", c.p, 6)
+	}
+
+}
+
+func TestReadFromExtraData(t *testing.T) {
+	cOrig := New(6)
+	cOrig.Add([]byte("the sun has got his hat on"))
+	cOrig.Add([]byte("hip hip hip hooray"))
+
+	data := serialize(cOrig)
+	data = append(data, 44) // extra trailing byte
+
+	var c Counter
+	r := bytes.NewReader(data)
+	_, err := c.ReadFrom(r)
+	if err != io.ErrShortBuffer {
+		t.Fatalf("got %v error, wanted io.ErrShortBuffer", err)
+	}
+}
+
+func TestReadFromChecksVersion(t *testing.T) {
+	cOrig := New(6)
+	cOrig.Add([]byte("the sun has got his hat on"))
+	cOrig.Add([]byte("hip hip hip hooray"))
+
+	data := serialize(cOrig)
+	data[0] = Version + 1
+
+	var c Counter
+	r := bytes.NewReader(data)
+	_, err := c.ReadFrom(r)
+	if err != ErrIncompatibleVersion {
+		t.Fatalf("got %v error, wanted ErrIncompatibleVersion", err)
+	}
+}
+
+func TestWithBytes(t *testing.T) {
+	cOrig := New(6)
+	cOrig.Add([]byte("the sun has got his hat on"))
+	cOrig.Add([]byte("hip hip hip hooray"))
+
+	data := serialize(cOrig)
+
+	c, err := WithBytes(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if c.p != 6 {
+		t.Errorf("got precision %d, wanted %d", c.p, 6)
+	}
+
+	data2 := serialize(c)
+
+	if !bytes.Equal(data2, data) {
+		t.Errorf("got %+v, wanted %+v", data2, data)
+	}
+}
+
+func TestWithBytesAdoptsBuffer(t *testing.T) {
+	cOrig := New(6)
+	cOrig.Add([]byte("the sun has got his hat on"))
+	cOrig.Add([]byte("hip hip hip hooray"))
+
+	data := serialize(cOrig)
+
+	c, err := WithBytes(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if c.p != 6 {
+		t.Errorf("got precision %d, wanted %d", c.p, 6)
+	}
+
+	// This should write to data
+	c.Add([]byte("and he's coming out today"))
+
+	data2 := serialize(c)
+
+	if !bytes.Equal(data2, data) {
+		t.Errorf("got %+v, wanted %+v", data2, data)
+	}
+
+}
+
+func TestWithBytesDoesNotAllocate(t *testing.T) {
+	cOrig := New(6)
+	cOrig.Add([]byte("the sun has got his hat on"))
+	cOrig.Add([]byte("hip hip hip hooray"))
+
+	data := serialize(cOrig)
+
+	allocs := testing.AllocsPerRun(1000, func() {
+		_, err := WithBytes(data)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+	if allocs != 0 {
+		t.Errorf("got %f allocations, wanted none", allocs)
 	}
 }

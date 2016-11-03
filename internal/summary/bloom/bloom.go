@@ -11,7 +11,10 @@ import (
 )
 
 const (
-	Version = 1 // Serialization version numnber
+	// Version is the version number of the binary serialization format. All
+	// prior versions up to and including this one are deserializable by this
+	// package.
+	Version = 1
 	hdrLen  = 2 // number of bytes needed for header data when serializing (version + number of hash functions)
 )
 

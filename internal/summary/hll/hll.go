@@ -4,6 +4,7 @@ package hll
 import (
 	"errors"
 	"fmt"
+	"io"
 	"math"
 
 	"github.com/iand/starbow/internal/bitbucket"
@@ -17,22 +18,56 @@ const (
 	// prior versions up to and including this one are deserializable by this
 	// package.
 	Version = 1
+
+	hdrLen = 2 // number of bytes needed for header data when serializing (version + number of hash functions)
 )
 
 var ErrIncompatibleVersion = errors.New("hll: incompatible version")
 
-// New creates a new hyperloglog++ counter with the specified precision. p must be in the range [4,18]
+// New creates a new hyperloglog counter with the specified precision. p must be in the range [4,18]
 func New(p uint8) Counter {
 	if p < 4 || p > 18 {
 		panic("hll: precision p must be in range [4,18]")
 	}
 	m := int(1 << uint(p))
 	c := Counter{
-		p:         p,
-		mask:      ((1 << p) - 1) << (64 - p),
-		bits:      bitbucket.New(m, 6),
-		threshold: thresholds[p],
+		p:    p,
+		bits: bitbucket.New(m, 6),
 	}
+	c.initParams()
+
+	return c
+}
+
+// WithBytes creates a hyperloglog counter that uses buf as its backing
+// storage, preserving any existing data in the byte slice. Any subsequent
+// writes to the counter will mutate buf. The layout of the byte buffer
+// must match the layout used by the WriteTo method.
+func WithBytes(buf []byte) (Counter, error) {
+	version := buf[0]
+	if version != Version {
+		return Counter{}, ErrIncompatibleVersion
+	}
+
+	p := buf[1]
+	bits, err := bitbucket.WithBytes(buf[2:])
+	if err != nil {
+		return Counter{}, err
+	}
+
+	c := Counter{
+		p:    p,
+		bits: bits,
+	}
+	c.initParams()
+	return c, nil
+}
+
+func (c *Counter) initParams() {
+	m := int(1 << uint(c.p))
+
+	c.mask = ((1 << c.p) - 1) << (64 - c.p)
+	c.threshold = thresholds[c.p]
 
 	if m <= 16 {
 		c.alpha = 0.673
@@ -45,8 +80,6 @@ func New(p uint8) Counter {
 	} else {
 		c.alpha = 0.7213 / (1 + 1.079/float64(m))
 	}
-
-	return c
 }
 
 type Counter struct {
@@ -211,6 +244,71 @@ func tau(c int, m int) float64 {
 	}
 
 	return z
+}
+
+// WriteTo writes a binary representation of the counter to w. It adheres to
+// the io.WriterTo interface protocol. The return value is the number of bytes
+// written. Any error encountered during the write is also returned.
+func (c *Counter) WriteTo(w io.Writer) (int64, error) {
+	var buf [hdrLen]byte
+	buf[0] = Version
+	buf[1] = c.p
+
+	n, err := w.Write(buf[:])
+	if err != nil {
+		return int64(n), err
+	}
+
+	n0, err := c.bits.WriteTo(w)
+	n += int(n0)
+	if err != nil {
+		return int64(n), err
+	}
+
+	return int64(n), nil
+}
+
+// ReadFrom reads a binary representation of the counter from r overwriting
+// any previous configuration. It adheres to the io.ReaderFrom interface
+// protocol. It reads data from r until EOF or error. The return value n is the
+// number of bytes read. Any error except io.EOF encountered during the read
+// is also returned.
+func (c *Counter) ReadFrom(r io.Reader) (int64, error) {
+	var buf [hdrLen]byte
+
+	n, err := io.ReadFull(r, buf[:])
+	if err != nil {
+		if err == io.EOF {
+			return int64(n), io.ErrUnexpectedEOF
+		}
+		return int64(n), err
+	}
+
+	version := buf[0]
+	if version != Version {
+		return int64(n), ErrIncompatibleVersion
+	}
+
+	c.p = buf[1]
+	c.initParams()
+
+	n0, err := c.bits.ReadFrom(r)
+	n += int(n0)
+	if err != nil {
+		if err == io.EOF {
+			return int64(n), io.ErrUnexpectedEOF
+		}
+		return int64(n), err
+	}
+
+	n1, err := r.Read(buf[:])
+	n += n1
+	if err != io.EOF {
+		// Unexpected trailing data
+		return int64(n), io.ErrShortBuffer
+	}
+
+	return int64(n), nil
 }
 
 var (

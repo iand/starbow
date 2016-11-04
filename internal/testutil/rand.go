@@ -39,20 +39,12 @@ func RandomByteSlices(m, n int, rng Rand) [][]byte {
 // the spare space ensuring that each entry from src appears at least once.
 func ShuffleRepeated(n int, src [][]byte, rng Rand) [][]byte {
 	dest := make([][]byte, n)
-	if len(dest) <= len(src) {
-		for i := range dest {
-			dest[i] = src[i]
+	copy(dest, src)
+
+	if len(dest) > len(src) {
+		for i := len(src); i < len(dest); i++ {
+			dest[i] = src[rng.Intn(len(src))]
 		}
-		Shuffle(dest, rng)
-		return dest
-	}
-
-	for i := range src {
-		dest[i] = src[i]
-	}
-
-	for i := len(src); i < len(dest); i++ {
-		dest[i] = src[rng.Intn(len(src))]
 	}
 
 	Shuffle(dest, rng)

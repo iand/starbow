@@ -8,23 +8,10 @@ import (
 	"math"
 )
 
-// Obs is a single observation that is intended to be included in the summary.
-type Obs float64
-type ObsList []float64
+// size is the size of a Summary in bytes
+const size = 32
 
-// Update adds the observation to the summary represented by the supplied byte buffer.
-func (o Obs) Update(buf []byte) error {
-	Summary(buf).Update(o)
-	return nil
-}
-
-// Update adds the list of observations to the summary represented by the supplied byte buffer.
-func (os ObsList) UpdateMulti(buf []byte) error {
-	Summary(buf).UpdateMulti(os)
-	return nil
-}
-
-var zeroStats64 = bytes.Repeat([]byte{0}, Size)
+var zeroStats64 = bytes.Repeat([]byte{0}, size)
 
 // Reset returns all measures tracked by the summary represented by the supplied byte buffer to their zero values.
 func Reset(buf []byte) error {
@@ -32,31 +19,30 @@ func Reset(buf []byte) error {
 	return nil
 }
 
-// Size is the size of a Summary in bytes
-const Size = 32
-
 // Summary is a summary that maintains basic statistical measures for a series
 // of observations. It requires 32 bytes.
 type Summary []byte
 
-// New creates a new stat64 Summary backed by the buffer buf which
-// must be at least 32 bytes in length.
-func New(buf []byte) Summary {
-	return Summary(buf)
+// New creates a new stat64 Summary, allocating a new backing buffer.
+func New() Summary {
+	buf := make([]byte, size)
+	return WithBytes(buf)
 }
 
+// WithBytes creates a new stat64 Summary backed by the buffer buf which
+// must be at least 32 bytes in length.
 func WithBytes(buf []byte) Summary {
 	return Summary(buf)
 }
 
 // Len returns the length of the buffer required to serialize a summary
 func Len() int {
-	return Size
+	return size
 }
 
-// Size returns the size of the summary's data, in bytes.
-func (s Summary) Size() int {
-	return Size
+// Size returns the length of the buffer required to serialize the summary
+func (s Summary) Len() int {
+	return size
 }
 
 // Count returns the number the series of observations.
@@ -86,7 +72,7 @@ func (s Summary) Sum() float64 {
 }
 
 // Update adds an observation to the summary.
-func (s Summary) Update(o Obs) {
+func (s Summary) Update(v float64) {
 	count := binary.LittleEndian.Uint64(s[:8])
 	sum := math.Float64frombits(binary.LittleEndian.Uint64(s[8:16]))
 	mean := math.Float64frombits(binary.LittleEndian.Uint64(s[16:24]))
@@ -95,12 +81,12 @@ func (s Summary) Update(o Obs) {
 	ss := math.Float64frombits(binary.LittleEndian.Uint64(s[24:32]))
 
 	count++
-	sum += float64(o)
+	sum += v
 
 	// Calculatation based on section 4.2.2 of Knuth, Vol 2: Seminumerical Algorithms
-	delta := float64(o) - mean
+	delta := v - mean
 	mean += delta / float64(count)
-	ss += delta * (float64(o) - mean)
+	ss += delta * (v - mean)
 
 	binary.LittleEndian.PutUint64(s[:8], count)
 	binary.LittleEndian.PutUint64(s[8:16], math.Float64bits(sum))
@@ -109,7 +95,7 @@ func (s Summary) Update(o Obs) {
 }
 
 // UpdateMulti adds a list of observation to the summary.
-func (s Summary) UpdateMulti(os ObsList) {
+func (s Summary) UpdateMulti(vs []float64) {
 	count := binary.LittleEndian.Uint64(s[:8])
 	sum := math.Float64frombits(binary.LittleEndian.Uint64(s[8:16]))
 	mean := math.Float64frombits(binary.LittleEndian.Uint64(s[16:24]))
@@ -117,14 +103,14 @@ func (s Summary) UpdateMulti(os ObsList) {
 	// ss is the sum of squares of differences from the current mean
 	ss := math.Float64frombits(binary.LittleEndian.Uint64(s[24:32]))
 
-	for _, o := range os {
+	for _, v := range vs {
 		count++
-		sum += float64(o)
+		sum += v
 
 		// Calculatation based on section 4.2.2 of Knuth, Vol 2: Seminumerical Algorithms
-		delta := float64(o) - mean
+		delta := v - mean
 		mean += delta / float64(count)
-		ss += delta * (float64(o) - mean)
+		ss += delta * (v - mean)
 	}
 
 	binary.LittleEndian.PutUint64(s[:8], count)

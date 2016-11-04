@@ -25,22 +25,23 @@ type ContinuousMeasure interface {
 type DiscreteMeasure interface {
 	Measure
 	DiscWriter() DiscWriterFunc
-	DiscNew() DiscWriterFunc
 }
 
-type RowWriterFunc func(buf []byte) error
-type ContWriterFunc func(buf []byte, v float64) error
-type DiscWriterFunc func(buf []byte, v []byte) error
+type RowWriterFunc func(buf []byte, init bool) error
+type ContWriterFunc func(buf []byte, init bool, v float64) error
+type DiscWriterFunc func(buf []byte, init bool, v []byte) error
 
 // Precise measures
 
 // Count is a precise count of observations over all time.
 type Count struct{}
 
+var _ RowMeasure = Count{}
+
 func (Count) Size() int { return 8 }
 
 func (Count) RowWriter() RowWriterFunc {
-	return func(buf []byte) error {
+	return func(buf []byte, init bool) error {
 		c := binary.LittleEndian.Uint64(buf)
 		c++
 		binary.LittleEndian.PutUint64(buf, c)
@@ -51,12 +52,14 @@ func (Count) RowWriter() RowWriterFunc {
 // Sum is a precise sum of continuous observations over all time.
 type Sum struct{}
 
+var _ ContinuousMeasure = Sum{}
+
 func (Sum) Size() int { return stat64.Len() }
 
 func (Sum) ContWriter() ContWriterFunc {
-	return func(buf []byte, v float64) error {
+	return func(buf []byte, init bool, v float64) error {
 		s := stat64.WithBytes(buf)
-		s.Update(stat64.Obs(v))
+		s.Update(v)
 		return nil
 	}
 }
@@ -64,12 +67,14 @@ func (Sum) ContWriter() ContWriterFunc {
 // Mean is a precise mean of continuous observations over all time.
 type Mean struct{}
 
+var _ ContinuousMeasure = Mean{}
+
 func (Mean) Size() int { return stat64.Len() }
 
 func (Mean) ContWriter() ContWriterFunc {
-	return func(buf []byte, v float64) error {
+	return func(buf []byte, init bool, v float64) error {
 		s := stat64.WithBytes(buf)
-		s.Update(stat64.Obs(v))
+		s.Update(v)
 		return nil
 	}
 }
@@ -77,12 +82,14 @@ func (Mean) ContWriter() ContWriterFunc {
 // Variance is a precise variance of continuous observations over all time.
 type Variance struct{}
 
+var _ ContinuousMeasure = Variance{}
+
 func (Variance) Size() int { return stat64.Len() }
 
 func (Variance) ContWriter() ContWriterFunc {
-	return func(buf []byte, v float64) error {
+	return func(buf []byte, init bool, v float64) error {
 		s := stat64.WithBytes(buf)
-		s.Update(stat64.Obs(v))
+		s.Update(v)
 		return nil
 	}
 }
@@ -116,25 +123,27 @@ type Cardinality struct {
 	Precision int // precision between 4 and 18, inclusive
 }
 
-func (c Cardinality) DiscUpdater() DiscWriterFunc {
-	return func(buf []byte, v []byte) error {
+var _ DiscreteMeasure = Cardinality{}
+
+func (c Cardinality) DiscWriter() DiscWriterFunc {
+	return func(buf []byte, init bool, v []byte) error {
+
+		if init {
+			s := hll.New(uint8(c.Precision))
+			s.Add(v)
+
+			var b bytes.Buffer
+			_, err := s.WriteTo(&b) // TODO: ensure bytes.Buffer does not grow
+			copy(buf, b.Bytes())
+			return err
+		}
+
 		s, err := hll.WithBytes(buf)
 		if err != nil {
 			return err
 		}
 		s.Add(v)
 		return nil
-	}
-}
-
-func (c Cardinality) DiscNew() DiscWriterFunc {
-	return func(buf []byte, v []byte) error {
-		s := hll.New(uint8(c.Precision))
-		s.Add(v)
-
-		b := bytes.NewBuffer(buf)
-		_, err := s.WriteTo(b) // TODO: ensure bytes.Buffer does not grow
-		return err
 	}
 }
 

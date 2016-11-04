@@ -317,8 +317,8 @@ func (c *Counter) Len() int {
 }
 
 // Reset reverts the counter to a zero count without reallocating the backing buffer.
-func (b *Counter) Reset() {
-	b.bits.Reset()
+func (c *Counter) Reset() {
+	c.bits.Reset()
 }
 
 // Len returns the length of the buffer required to serialize a counter with precision p

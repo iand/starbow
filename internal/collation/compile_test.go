@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"testing"
 
+	"github.com/iand/starbow/internal/summary/hll"
 	"github.com/iand/starbow/internal/summary/stat64"
 )
 
@@ -20,9 +21,13 @@ func TestCompileRecordMeasure(t *testing.T) {
 
 	r := Row{}
 
-	buf := make([]byte, 8)
+	buf := make([]byte, coll.Size())
 	for i := 0; i < 15; i++ {
-		err := coll.Update(r, buf)
+		init := false
+		if i == 0 {
+			init = true
+		}
+		err := coll.Update(r, buf, init)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -56,15 +61,19 @@ func TestCompileWithMeasure(t *testing.T) {
 		},
 	}
 
-	buf := make([]byte, 32)
+	buf := make([]byte, coll.Size())
 	for i := 0; i < 15; i++ {
-		err := coll.Update(r, buf)
+		init := false
+		if i == 0 {
+			init = true
+		}
+		err := coll.Update(r, buf, init)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	}
 
-	stat := stat64.New(buf)
+	stat := stat64.WithBytes(buf)
 
 	count := stat.Count()
 	if count != 15 {
@@ -119,13 +128,18 @@ func TestCompileUsesSameSummaryForCountSumMeanVariance(t *testing.T) {
 	}
 
 	buf := make([]byte, 32)
-	for _, r := range rows {
-		if err := coll.Update(r, buf); err != nil {
+	for i, r := range rows {
+		init := false
+		if i == 0 {
+			init = true
+		}
+
+		if err := coll.Update(r, buf, init); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	}
 
-	stat := stat64.New(buf)
+	stat := stat64.WithBytes(buf)
 
 	count := stat.Count()
 	if count != 3 {
@@ -145,6 +159,69 @@ func TestCompileUsesSameSummaryForCountSumMeanVariance(t *testing.T) {
 	variance := stat.Variance()
 	if variance != 13 {
 		t.Fatalf("got variance %v, wanted %v", variance, 13)
+	}
+
+}
+
+func TestCompileWithDiscreteMeasure(t *testing.T) {
+	fooCounter := Schema{
+		Name: "foocounter",
+		Measures: []MeasureSpec{
+			{
+				Field:    FieldSpec{Pattern: "foo"},
+				Measures: []Measure{Cardinality{Precision: 6}},
+			},
+		},
+	}
+
+	coll, err := fooCounter.Compile()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Logf("%+v", coll)
+
+	rows := []Row{
+		{Data: []FV{{F: []byte("foo"), V: []byte("alpha")}}},
+		{Data: []FV{{F: []byte("foo"), V: []byte("beta")}}},
+		{Data: []FV{{F: []byte("foo"), V: []byte("gamma")}}},
+		{Data: []FV{{F: []byte("foo"), V: []byte("delta")}}},
+		{Data: []FV{{F: []byte("foo"), V: []byte("epsilon")}}},
+		{Data: []FV{{F: []byte("foo"), V: []byte("zeta")}}},
+		{Data: []FV{{F: []byte("foo"), V: []byte("eta")}}},
+		{Data: []FV{{F: []byte("foo"), V: []byte("theta")}}},
+		{Data: []FV{{F: []byte("foo"), V: []byte("iota")}}},
+		{Data: []FV{{F: []byte("foo"), V: []byte("kappa")}}},
+		{Data: []FV{{F: []byte("foo"), V: []byte("lambda")}}},
+		{Data: []FV{{F: []byte("foo"), V: []byte("mu")}}},
+	}
+
+	buf := make([]byte, coll.Size())
+	for i := range rows {
+		init := false
+		if i == 0 {
+			init = true
+		}
+
+		err := coll.Update(rows[i], buf, init)
+		t.Logf("%d: %+v", i, buf)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	}
+
+	cExpect := hll.New(6)
+	for i := range rows {
+		cExpect.Add(rows[i].Data[0].V)
+	}
+
+	c, err := hll.WithBytes(buf)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	count := c.Count()
+	expected := cExpect.Count()
+	if count != expected {
+		t.Fatalf("got count %v, wanted %v", count, expected)
 	}
 
 }

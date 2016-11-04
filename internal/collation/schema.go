@@ -88,12 +88,14 @@ type Collator struct {
 
 // Update reads the row and updates buf according to the schema's measures.
 // buf contains the existing state of the collation record and is updated in-
-// place. buf must be long enough for the schema's data. If an error is returned then
-// the buffer may be in an inconsistent state and should not be used further.
-func (c Collator) Update(r Row, buf []byte) error {
+// place. buf must be long enough for the schema's data. If init is true then
+// the buffer contains unitialised data and the measures should initialise
+// their state. If an error is returned then the buffer may be in an
+// inconsistent state and should not be used further.
+func (c Collator) Update(r Row, buf []byte, init bool) error {
 	// Update measures that operate on the row
 	for _, w := range c.writers {
-		if err := w.Update(buf); err != nil {
+		if err := w.Update(buf, init); err != nil {
 			return err
 		}
 	}
@@ -106,7 +108,7 @@ func (c Collator) Update(r Row, buf []byte) error {
 				return err
 			}
 			for _, w := range ws {
-				if err := w.UpdateFloat64(buf, v); err != nil {
+				if err := w.UpdateFloat64(buf, init, v); err != nil {
 					return err
 				}
 			}
@@ -115,7 +117,7 @@ func (c Collator) Update(r Row, buf []byte) error {
 		// Update measures that operate on the field as a discrete value
 		if ws, exists := c.discWriters[string(fv.F)]; exists {
 			for _, w := range ws {
-				if err := w.UpdateItem(buf, fv.V); err != nil {
+				if err := w.UpdateItem(buf, init, fv.V); err != nil {
 					return err
 				}
 			}
@@ -129,29 +131,33 @@ func (c Collator) Keys() [][]byte {
 	return c.keys
 }
 
-type anyWriter struct {
-	Low, High int // index range of data within buffer
-	Fn        func([]byte) error
+func (c Collator) Size() int {
+	return c.size
 }
 
-func (a anyWriter) Update(buf []byte) error {
-	return a.Fn(buf[a.Low:a.High])
+type anyWriter struct {
+	Low, High int // index range of data within buffer
+	Fn        RowWriterFunc
+}
+
+func (a anyWriter) Update(buf []byte, init bool) error {
+	return a.Fn(buf[a.Low:a.High], init)
 }
 
 type contWriter struct {
 	Low, High int // index range of data within buffer
-	Fn        func(buf []byte, v float64) error
+	Fn        ContWriterFunc
 }
 
-func (c contWriter) UpdateFloat64(buf []byte, v float64) error {
-	return c.Fn(buf[c.Low:c.High], v)
+func (c contWriter) UpdateFloat64(buf []byte, init bool, v float64) error {
+	return c.Fn(buf[c.Low:c.High], init, v)
 }
 
 type discWriter struct {
 	Low, High int // index range of data within buffer
-	Fn        func(buf []byte, v []byte) error
+	Fn        DiscWriterFunc
 }
 
-func (d discWriter) UpdateItem(buf []byte, v []byte) error {
-	return d.Fn(buf[d.Low:d.High], v)
+func (d discWriter) UpdateItem(buf []byte, init bool, v []byte) error {
+	return d.Fn(buf[d.Low:d.High], init, v)
 }

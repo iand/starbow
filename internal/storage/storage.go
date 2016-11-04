@@ -30,7 +30,7 @@ func (s *Store) WriteRow(r collation.Row) error {
 
 	t := Transaction{
 		Row: r,
-		Fn:  s.Collator.RowUpdate,
+		Fn:  s.Collator.Update,
 	}
 
 	return s.Backend.Update(key, t.Do)
@@ -38,9 +38,9 @@ func (s *Store) WriteRow(r collation.Row) error {
 
 type Transaction struct {
 	Row collation.Row
-	Fn  func(r collation.Row, data []byte) error
+	Fn  func(r collation.Row, data []byte, init bool) error
 }
 
 func (t Transaction) Do(data []byte) error {
-	return t.Fn(t.Row, data)
+	return t.Fn(t.Row, data, false) // TODO: pass init=true when it's a new item in the keyvalue store
 }

@@ -1,9 +1,5 @@
 package collation
 
-import (
-	"github.com/iand/starbow/internal/summary/stat64"
-)
-
 func (s *Schema) Compile() (Collator, error) {
 	coll := Collator{
 		keys:    make([][]byte, len(s.Keys)),
@@ -17,35 +13,60 @@ func (s *Schema) Compile() (Collator, error) {
 
 	pos := 0
 	for _, m := range s.RecordMeasures {
-		counter, ok := m.(Count)
-		if !ok {
-			continue
-		}
+		size := m.Size()
 		coll.writers = append(coll.writers, anyWriter{
 			Low:  pos,
-			High: pos + counter.Size(),
-			Fn:   counter.Update,
+			High: pos + size,
+			Fn:   m.RowWriter(),
 		})
-		pos += counter.Size()
-		coll.size += counter.Size()
+		pos += size
+		coll.size += size
 	}
 
 	coll.contWriters = make(map[string][]contWriter)
-	for _, m := range s.Measures {
-		ws := coll.contWriters[m.Field.Pattern]
-		ws = append(ws, contWriter{
-			Low:  pos,
-			High: pos + 32,
-			Fn: func(buf []byte, v float64) error {
-				s := stat64.New(buf)
-				s.Update(stat64.Obs(v))
-				return nil
-			},
-		})
+	coll.discWriters = make(map[string][]discWriter)
+	for _, ms := range s.Measures {
+		// Special handling for count, mean, sum, variance - one summary can writing them all at once
+		stat64 := false
 
-		coll.contWriters[m.Field.Pattern] = ws
-		pos += 32
-		coll.size += 32
+	measureloop:
+		for _, m := range ms.Measures {
+			size := m.Size()
+
+			if cm, ok := m.(ContinuousMeasure); ok {
+				switch m.(type) {
+				case Count, Sum, Mean, Variance:
+					if stat64 {
+						// We already have a stat64 measure, so reuse it
+						continue measureloop
+					}
+					stat64 = true
+				}
+
+				ws := coll.contWriters[ms.Field.Pattern]
+				ws = append(ws, contWriter{
+					Low:  pos,
+					High: pos + size,
+					Fn:   cm.ContWriter(),
+				})
+				coll.contWriters[ms.Field.Pattern] = ws
+				pos += size
+				coll.size += size
+			}
+
+			if dm, ok := m.(DiscreteMeasure); ok {
+				ws := coll.discWriters[ms.Field.Pattern]
+				ws = append(ws, discWriter{
+					Low:  pos,
+					High: pos + size,
+					Fn:   dm.DiscWriter(),
+				})
+				coll.discWriters[ms.Field.Pattern] = ws
+				pos += size
+				coll.size += size
+			}
+
+		}
 	}
 
 	return coll, nil

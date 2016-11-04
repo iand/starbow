@@ -45,6 +45,15 @@ func New(buf []byte) Summary {
 	return Summary(buf)
 }
 
+func WithBytes(buf []byte) Summary {
+	return Summary(buf)
+}
+
+// Len returns the length of the buffer required to serialize a summary
+func Len() int {
+	return Size
+}
+
 // Size returns the size of the summary's data, in bytes.
 func (s Summary) Size() int {
 	return Size

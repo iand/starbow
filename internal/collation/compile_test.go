@@ -10,7 +10,7 @@ import (
 func TestCompileRecordMeasure(t *testing.T) {
 	rowCounter := Schema{
 		Name:           "rowcounter",
-		RecordMeasures: Measures{Count{}},
+		RecordMeasures: []RowMeasure{Count{}},
 	}
 
 	coll, err := rowCounter.Compile()
@@ -22,7 +22,7 @@ func TestCompileRecordMeasure(t *testing.T) {
 
 	buf := make([]byte, 8)
 	for i := 0; i < 15; i++ {
-		err := coll.RowUpdate(r, buf)
+		err := coll.Update(r, buf)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -40,7 +40,7 @@ func TestCompileWithMeasure(t *testing.T) {
 		Measures: []MeasureSpec{
 			{
 				Field:    FieldSpec{Pattern: "foo"},
-				Measures: Measures{Count{}, Sum{}},
+				Measures: []Measure{Count{}, Sum{}},
 			},
 		},
 	}
@@ -58,7 +58,7 @@ func TestCompileWithMeasure(t *testing.T) {
 
 	buf := make([]byte, 32)
 	for i := 0; i < 15; i++ {
-		err := coll.RowUpdate(r, buf)
+		err := coll.Update(r, buf)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -83,7 +83,7 @@ func TestCompileUsesSameSummaryForCountSumMeanVariance(t *testing.T) {
 		Measures: []MeasureSpec{
 			{
 				Field:    FieldSpec{Pattern: "foo"},
-				Measures: Measures{Count{}, Sum{}, Mean{}, Variance{}},
+				Measures: []Measure{Count{}, Sum{}, Mean{}, Variance{}},
 			},
 		},
 	}
@@ -120,7 +120,7 @@ func TestCompileUsesSameSummaryForCountSumMeanVariance(t *testing.T) {
 
 	buf := make([]byte, 32)
 	for _, r := range rows {
-		if err := coll.RowUpdate(r, buf); err != nil {
+		if err := coll.Update(r, buf); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	}

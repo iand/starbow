@@ -14,7 +14,7 @@ type Schema struct {
 	Filter         Filter
 	Keys           []KeySpec
 	Measures       []MeasureSpec // Field-level measures
-	RecordMeasures Measures      // Record-level measures
+	RecordMeasures []RowMeasure  // Record-level measures
 }
 
 // A Filter specifies criteria by which a record is selected.
@@ -34,7 +34,7 @@ type FieldSpec struct {
 // A MeasureSpec specifies a measure field in a schema.
 type MeasureSpec struct {
 	Field    FieldSpec
-	Measures Measures
+	Measures []Measure
 }
 
 // Row is a row of data to be collated containing fields and their values.
@@ -82,12 +82,16 @@ type Collator struct {
 	keys        [][]byte
 	writers     []anyWriter
 	contWriters map[string][]contWriter
+	discWriters map[string][]discWriter
 	size        int // Size of buffer required to write all measures, i.e. record size
 }
 
-// RowUpdate reads the row and updates buf according to the schema's measures.
-// buf must be long enough for the schema's data.
-func (c Collator) RowUpdate(r Row, buf []byte) error {
+// Update reads the row and updates buf according to the schema's measures.
+// buf contains the existing state of the collation record and is updated in-
+// place. buf must be long enough for the schema's data. If an error is returned then
+// the buffer may be in an inconsistent state and should not be used further.
+func (c Collator) Update(r Row, buf []byte) error {
+	// Update measures that operate on the row
 	for _, w := range c.writers {
 		if err := w.Update(buf); err != nil {
 			return err
@@ -95,6 +99,7 @@ func (c Collator) RowUpdate(r Row, buf []byte) error {
 	}
 
 	for _, fv := range r.Data {
+		// Update measures that operate on the field as a continuous value
 		if ws, exists := c.contWriters[string(fv.F)]; exists {
 			v, err := strconv.ParseFloat(string(fv.V), 64)
 			if err != nil {
@@ -102,6 +107,15 @@ func (c Collator) RowUpdate(r Row, buf []byte) error {
 			}
 			for _, w := range ws {
 				if err := w.UpdateFloat64(buf, v); err != nil {
+					return err
+				}
+			}
+		}
+
+		// Update measures that operate on the field as a discrete value
+		if ws, exists := c.discWriters[string(fv.F)]; exists {
+			for _, w := range ws {
+				if err := w.UpdateItem(buf, fv.V); err != nil {
 					return err
 				}
 			}

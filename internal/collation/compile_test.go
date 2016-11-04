@@ -9,6 +9,7 @@ import (
 )
 
 func TestCompileRecordMeasure(t *testing.T) {
+	t.Parallel()
 	rowCounter := Schema{
 		Name:           "rowcounter",
 		RecordMeasures: []RowMeasure{Count{}},
@@ -40,6 +41,7 @@ func TestCompileRecordMeasure(t *testing.T) {
 }
 
 func TestCompileWithMeasure(t *testing.T) {
+	t.Parallel()
 	fooCounter := Schema{
 		Name: "foocounter",
 		Measures: []MeasureSpec{
@@ -88,6 +90,7 @@ func TestCompileWithMeasure(t *testing.T) {
 }
 
 func TestCompileUsesSameSummaryForCountSumMeanVariance(t *testing.T) {
+	t.Parallel()
 	sch := Schema{
 		Measures: []MeasureSpec{
 			{
@@ -164,6 +167,7 @@ func TestCompileUsesSameSummaryForCountSumMeanVariance(t *testing.T) {
 }
 
 func TestCompileWithDiscreteMeasure(t *testing.T) {
+	t.Parallel()
 	fooCounter := Schema{
 		Name: "foocounter",
 		Measures: []MeasureSpec{

@@ -12,7 +12,6 @@ import (
 )
 
 func TestCount(t *testing.T) {
-
 	seeds := []int64{256307119, 126465191, 239994928, 359761297, 279461460, 107961527, 192002531, 224757666, 338052841, 324311747}
 
 	testCases := []struct {
@@ -43,6 +42,7 @@ func TestCount(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run("", func(t *testing.T) {
+			t.Parallel()
 			counts := make([]float64, len(seeds))
 			for i, seed := range seeds {
 				c := New(tc.p)
@@ -69,6 +69,7 @@ func TestCount(t *testing.T) {
 }
 
 func TestAddDoesNotAllocate(t *testing.T) {
+	t.Parallel()
 	rng := rand.New(rand.NewSource(121121312))
 	data := testutil.RandomByteSlices(101, 12, rng) // 101 since AllocsPerRun does a warm up
 	c := New(6)
@@ -84,6 +85,7 @@ func TestAddDoesNotAllocate(t *testing.T) {
 }
 
 func TestCountDoesNotAllocate(t *testing.T) {
+	t.Parallel()
 	rng := rand.New(rand.NewSource(121121312))
 	data := testutil.RandomByteSlices(100, 12, rng)
 	c := New(6)
@@ -188,6 +190,7 @@ func BenchmarkEstimators(b *testing.B) {
 }
 
 func TestWriteTo(t *testing.T) {
+	t.Parallel()
 	c := smallCounter()
 
 	var buf bytes.Buffer
@@ -209,6 +212,7 @@ func serialize(c Counter) []byte {
 }
 
 func TestReadFrom(t *testing.T) {
+	t.Parallel()
 	cOrig := smallCounter()
 	data := serialize(cOrig)
 	t.Logf("%+v", data)
@@ -232,6 +236,7 @@ func TestReadFrom(t *testing.T) {
 }
 
 func TestReadFromExtraData(t *testing.T) {
+	t.Parallel()
 	cOrig := smallCounter()
 	data := serialize(cOrig)
 	data = append(data, 44) // extra trailing byte
@@ -245,6 +250,7 @@ func TestReadFromExtraData(t *testing.T) {
 }
 
 func TestReadFromChecksVersion(t *testing.T) {
+	t.Parallel()
 	cOrig := smallCounter()
 	data := serialize(cOrig)
 	data[0] = Version + 1
@@ -258,6 +264,7 @@ func TestReadFromChecksVersion(t *testing.T) {
 }
 
 func TestWithBytes(t *testing.T) {
+	t.Parallel()
 	cOrig := smallCounter()
 	data := serialize(cOrig)
 
@@ -278,6 +285,7 @@ func TestWithBytes(t *testing.T) {
 }
 
 func TestWithBytesAdoptsBuffer(t *testing.T) {
+	t.Parallel()
 	cOrig := smallCounter()
 
 	data := serialize(cOrig)
@@ -303,6 +311,7 @@ func TestWithBytesAdoptsBuffer(t *testing.T) {
 }
 
 func TestWithBytesDoesNotAllocate(t *testing.T) {
+	t.Parallel()
 	cOrig := smallCounter()
 
 	data := serialize(cOrig)
@@ -319,6 +328,7 @@ func TestWithBytesDoesNotAllocate(t *testing.T) {
 }
 
 func TestLen(t *testing.T) {
+	t.Parallel()
 	c := New(6)
 	expected := c.Len()
 	actual := Len(6)
@@ -328,6 +338,7 @@ func TestLen(t *testing.T) {
 }
 
 func TestResetDoesNotAllocate(t *testing.T) {
+	t.Parallel()
 	c := smallCounter()
 
 	allocs := testing.AllocsPerRun(100, func() {

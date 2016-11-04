@@ -11,6 +11,7 @@ import (
 )
 
 func TestAdd(t *testing.T) {
+	t.Parallel()
 	b := NewBits(1024, 6)
 	b.Add([]byte("foo"))
 
@@ -28,6 +29,7 @@ func TestAdd(t *testing.T) {
 }
 
 func TestHas(t *testing.T) {
+	t.Parallel()
 	b := NewBits(1024, 6)
 	b.Add([]byte("foo"))
 
@@ -85,6 +87,7 @@ func BenchmarkAdd(b *testing.B) {
 }
 
 func TestCount(t *testing.T) {
+	t.Parallel()
 	bf := New(1000000, 0.01)
 	rng := rand.New(rand.NewSource(232323))
 	data := testutil.RandomByteSlices(50000, 8, rng)
@@ -99,6 +102,7 @@ func TestCount(t *testing.T) {
 }
 
 func TestWriteTo(t *testing.T) {
+	t.Parallel()
 	var buf bytes.Buffer
 
 	bf := NewBits(256, 3)
@@ -133,6 +137,7 @@ func serialize(bf Bloom) []byte {
 }
 
 func TestReadFrom(t *testing.T) {
+	t.Parallel()
 	bf := NewBits(256, 3)
 	bf.Add([]byte("xyz"))
 
@@ -165,6 +170,7 @@ func TestReadFrom(t *testing.T) {
 }
 
 func TestReadFromExtraData(t *testing.T) {
+	t.Parallel()
 	bf := NewBits(256, 3)
 	data := serialize(bf)
 	data = append(data, 44) // extra trailing byte
@@ -177,6 +183,7 @@ func TestReadFromExtraData(t *testing.T) {
 }
 
 func TestReadFromChecksVersion(t *testing.T) {
+	t.Parallel()
 	bf := NewBits(256, 3)
 	data := serialize(bf)
 	data[0] = Version + 1
@@ -189,6 +196,7 @@ func TestReadFromChecksVersion(t *testing.T) {
 }
 
 func TestWithBytes(t *testing.T) {
+	t.Parallel()
 	bf := NewBits(256, 3)
 	bf.Add([]byte("xyz"))
 
@@ -213,6 +221,7 @@ func TestWithBytes(t *testing.T) {
 }
 
 func TestWithBytesDoesNotAllocate(t *testing.T) {
+	t.Parallel()
 	bf := NewBits(256, 3)
 	bf.Add([]byte("xyz"))
 

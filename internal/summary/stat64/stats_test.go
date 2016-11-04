@@ -24,6 +24,7 @@ func TestSummary(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run("", func(t *testing.T) {
+			t.Parallel()
 			s := New()
 			for _, o := range tc.obs {
 				s.Update(o)
@@ -65,6 +66,7 @@ func TestSummaryUpdateMulti(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run("", func(t *testing.T) {
+			t.Parallel()
 			s := New()
 			s.UpdateMulti(tc.obs)
 

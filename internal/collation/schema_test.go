@@ -62,6 +62,7 @@ func TestRowKeyValue(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run("", func(t *testing.T) {
+			t.Parallel()
 			r := Row{
 				Data: tc.data,
 			}

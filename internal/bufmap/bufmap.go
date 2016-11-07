@@ -92,7 +92,7 @@ func (m *Map) Get(k uint64, buf []byte) bool {
 // will also return an error if the map is full. The function fn may be called
 // multiple times during a single call to Update, or not called at all if the
 // map cannot find space for the key.
-func (m *Map) Update(k uint64, fn func(data []byte) error) error {
+func (m *Map) Update(k uint64, fn func(data []byte, init bool) error) error {
 	// 0 is our value that indicates an empty slot so we can't accept
 	// it as a valid key
 	if k == 0 {
@@ -100,6 +100,7 @@ func (m *Map) Update(k uint64, fn func(data []byte) error) error {
 	}
 	x := -1
 	i := 0
+	init := false
 	for {
 		x = m.pos(k, i)
 
@@ -108,6 +109,8 @@ func (m *Map) Update(k uint64, fn func(data []byte) error) error {
 		if kexist == k {
 			break
 		}
+		// Signal that the is a new value
+		init = true
 
 		// Is it an empty slot?
 		if kexist == 0 {
@@ -140,7 +143,7 @@ func (m *Map) Update(k uint64, fn func(data []byte) error) error {
 	// Notify readers that we are writing
 	atomic.AddUint32(&s.seq, 1)
 
-	err := fn(m.values[x*m.s : x*(m.s+1)])
+	err := fn(m.values[x*m.s:x*(m.s+1)], init)
 
 	// Notify readers that we are done
 	atomic.AddUint32(&s.seq, 1)

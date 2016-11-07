@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"context"
+
 	"github.com/iand/starbow/internal/collation"
 )
 
@@ -13,7 +15,7 @@ type Backend interface {
 	// v using the function fn. It returns the error returned by fn, if any. The
 	// function fn may be called multiple times during a single call to Update, or
 	// not called at all.
-	Update(k uint64, fn func(data []byte) error) error
+	Update(k uint64, fn func(data []byte, init bool) error) error // TODO: pass init=true when it's a new item in the keyvalue store
 }
 
 type Store struct {
@@ -21,7 +23,7 @@ type Store struct {
 	Collator collation.Collator
 }
 
-func (s *Store) WriteRow(r collation.Row) error {
+func (s *Store) Write(ctx context.Context, r collation.Row) error {
 	key, found := r.KeyValue(s.Collator.Keys())
 	if !found {
 		// Nothing to do
@@ -33,6 +35,12 @@ func (s *Store) WriteRow(r collation.Row) error {
 		Fn:  s.Collator.Update,
 	}
 
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
 	return s.Backend.Update(key, t.Do)
 }
 
@@ -41,6 +49,6 @@ type Transaction struct {
 	Fn  func(r collation.Row, data []byte, init bool) error
 }
 
-func (t Transaction) Do(data []byte) error {
-	return t.Fn(t.Row, data, false) // TODO: pass init=true when it's a new item in the keyvalue store
+func (t Transaction) Do(data []byte, init bool) error {
+	return t.Fn(t.Row, data, init)
 }

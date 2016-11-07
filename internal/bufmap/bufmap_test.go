@@ -19,7 +19,7 @@ func TestEmpty(t *testing.T) {
 }
 
 // Increment by 1
-var inc = func(data []byte) error {
+var inc = func(data []byte, init bool) error {
 	val, _ := binary.ReadVarint(bytes.NewReader(data))
 	binary.PutVarint(data, val+1)
 	return nil

@@ -19,6 +19,10 @@ func setupDemo(s *server.Server) error {
 				Field:    collation.FieldSpec{Pattern: "height"},
 				Measures: []collation.Measure{collation.Mean{}, collation.Sum{}, collation.Variance{}, collation.Max{}, collation.Min{}},
 			},
+			{
+				Field:    collation.FieldSpec{Pattern: "iata"},
+				Measures: []collation.Measure{collation.Cardinality{Precision: 10}},
+			},
 		},
 	})
 
@@ -30,8 +34,12 @@ func setupDemo(s *server.Server) error {
 		RecordMeasures: []collation.RowMeasure{collation.Count{}},
 		Measures: []collation.MeasureSpec{
 			{
+				Field:    collation.FieldSpec{Pattern: "country"},
+				Measures: []collation.Measure{collation.Cardinality{Precision: 8}},
+			},
+			{
 				Field:    collation.FieldSpec{Pattern: "height"},
-				Measures: []collation.Measure{collation.Mean{}, collation.Sum{}, collation.Variance{}, collation.Max{}, collation.Min{}},
+				Measures: []collation.Measure{collation.Cardinality{Precision: 8}},
 			},
 		},
 	})

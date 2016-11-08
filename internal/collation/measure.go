@@ -226,6 +226,7 @@ type Cardinality struct {
 }
 
 var _ DiscreteInput = Cardinality{}
+var _ ContinuousOutput = Cardinality{}
 
 func (c Cardinality) DiscWriter() DiscWriterFunc {
 	return func(buf []byte, init bool, v []byte) error {
@@ -246,6 +247,16 @@ func (c Cardinality) DiscWriter() DiscWriterFunc {
 		}
 		s.Add(v)
 		return nil
+	}
+}
+
+func (c Cardinality) ContReader() ContReaderFunc {
+	return func(buf []byte) (float64, error) {
+		s, err := hll.WithBytes(buf)
+		if err != nil {
+			return 0, err
+		}
+		return float64(s.Count()), nil
 	}
 }
 

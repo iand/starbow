@@ -143,7 +143,7 @@ func (m *Map) Update(k uint64, fn func(data []byte, init bool) error) error {
 	// Notify readers that we are writing
 	atomic.AddUint32(&s.seq, 1)
 
-	err := fn(m.values[x*m.s:x*(m.s+1)], init)
+	err := fn(m.values[x*m.s:(x+1)*m.s], init)
 
 	// Notify readers that we are done
 	atomic.AddUint32(&s.seq, 1)

@@ -2,10 +2,20 @@ package collation
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/iand/starbow/internal/hash/fnv"
+)
+
+var (
+	ErrMeasureNotFound = errors.New("measure not found for field")
+)
+
+const (
+	RowPseudoField = "-" // a field name that represents a row level measure
 )
 
 // A Schema defines the structure of a collation.
@@ -41,7 +51,7 @@ type MeasureSpec struct {
 type Row struct {
 	ReceiveTime time.Time // received time
 	DataTime    time.Time // data time
-	Data        []FV      // fields and values in the row. Field names must be unique.
+	Data        FVList    // fields and values in the row. Field names must be unique.
 }
 
 // FV is a field name with a value
@@ -49,19 +59,22 @@ type FV struct {
 	F, V []byte // field name and value
 }
 
-// KeyValue builds a key value by locating Row fields corresponding to the key names supplied
-// and hashing their names and values. It returns false as the second argument if the key could not be
-// constructed, e.g. if one of the keys does not match a field in the row. keys must be sorted
-// in ascending order.
-func (r *Row) KeyValue(keys [][]byte) (uint64, bool) {
+type FVList []FV
+
+// KeyValue builds a key value by locating Query criteria fields corresponding
+// to the key names supplied and hashing their names and values. It returns
+// false as the second argument if the key could not be constructed, e.g. if
+// one of the keys does not match a field in the query criteria. keys must be
+// sorted in ascending order.
+func (fv FVList) KeyValue(keys [][]byte) (uint64, bool) {
 	h := fnv.New64()
 	// TODO: optimize naive key search
 outer:
 	for i := range keys {
-		for j := range r.Data {
-			if bytes.Equal(keys[i], r.Data[j].F) {
-				h.Write(r.Data[j].F)
-				h.Write(r.Data[j].V)
+		for j := range fv {
+			if bytes.Equal(keys[i], fv[j].F) {
+				h.Write(fv[j].F)
+				h.Write(fv[j].V)
 				continue outer
 			}
 		}
@@ -71,18 +84,72 @@ outer:
 	return h.Sum64(), true
 }
 
-// Reset clears the row of all data.
+// KeyValue builds a key value by locating Row fields corresponding to the key names supplied
+// and hashing their names and values. It returns false as the second argument if the key could not be
+// constructed, e.g. if one of the keys does not match a field in the row. keys must be sorted
+// in ascending order.
+func (r *Row) KeyValue(keys [][]byte) (uint64, bool) {
+	return r.Data.KeyValue(keys)
+}
+
+// Reset clears the row of all data, preserving allocated memory.
 func (r *Row) Reset() {
 	r.ReceiveTime = time.Time{}
 	r.DataTime = time.Time{}
 	r.Data = r.Data[:0]
 }
 
+// FM is a field name with a list of measures
+type FM struct {
+	F []byte   // field name
+	M [][]byte // list of measure names
+}
+
+// Query is a row of data to be collated containing fields and their values.
+type Query struct {
+	FieldMeasures []FM   // fields and the measures to take from them
+	Criteria      FVList // fields and values in the row. Field names must be unique.
+}
+
+// KeyValue builds a key value by locating Query criteria fields corresponding
+// to the key names supplied and hashing their names and values. It returns
+// false as the second argument if the key could not be constructed, e.g. if
+// one of the keys does not match a field in the query criteria. keys must be
+// sorted in ascending order.
+func (q *Query) KeyValue(keys [][]byte) (uint64, bool) {
+	return q.Criteria.KeyValue(keys)
+}
+
+// Reset clears the query of all data, preserving allocated memory.
+func (q *Query) Reset() {
+	q.FieldMeasures = q.FieldMeasures[:0]
+	q.Criteria = q.Criteria[:0]
+}
+
+// FMV is a field name with a measure name and a value
+type FMV struct {
+	F []byte // field name
+	M []byte // measure name
+	V interface{}
+}
+
+func (f FMV) String() string {
+	return fmt.Sprintf("%s(%s)=%v", f.M, f.F, f.V)
+}
+
+// Result is a result of a query.
+type Result struct {
+	FieldMeasureValues []FMV // fields and the measure values
+}
+
 type Collator struct {
+	name        string
 	keys        [][]byte
 	writers     []anyWriter
 	contWriters map[string][]contWriter
 	discWriters map[string][]discWriter
+	contReaders map[string]map[string]contReader
+	discReaders map[string]map[string]discReader
 	size        int // Size of buffer required to write all measures, i.e. record size
 }
 
@@ -127,12 +194,58 @@ func (c Collator) Update(r Row, buf []byte, init bool) error {
 	return nil
 }
 
+// Note that the byte slices in fml and buf must not be retained or reused by the collator.
+func (c Collator) Read(fml []FM, buf []byte) (Result, error) {
+	var res Result
+	for _, fm := range fml {
+		field := string(fm.F)
+
+		if rs, exists := c.contReaders[field]; exists {
+			for _, measure := range fm.M {
+				if r, exists := rs[string(measure)]; exists {
+					v, err := r.ReadFloat64(buf)
+					if err != nil {
+						return res, err
+					}
+					res.FieldMeasureValues = append(res.FieldMeasureValues, FMV{
+						F: fm.F,
+						M: measure,
+						V: v,
+					})
+				}
+			}
+		}
+
+		if rs, exists := c.discReaders[field]; exists {
+			for _, measure := range fm.M {
+				if r, exists := rs[string(measure)]; exists {
+					v, err := r.ReadItem(buf)
+					if err != nil {
+						return res, err
+					}
+					res.FieldMeasureValues = append(res.FieldMeasureValues, FMV{
+						F: fm.F,
+						M: measure,
+						V: v,
+					})
+				}
+			}
+		}
+	}
+
+	return res, nil
+}
+
 func (c Collator) Keys() [][]byte {
 	return c.keys
 }
 
 func (c Collator) Size() int {
 	return c.size
+}
+
+func (c Collator) Name() string {
+	return c.name
 }
 
 type anyWriter struct {
@@ -160,4 +273,22 @@ type discWriter struct {
 
 func (d discWriter) UpdateItem(buf []byte, init bool, v []byte) error {
 	return d.Fn(buf[d.Low:d.High], init, v)
+}
+
+type contReader struct {
+	Low, High int // index range of data within buffer
+	Fn        ContReaderFunc
+}
+
+func (c contReader) ReadFloat64(buf []byte) (float64, error) {
+	return c.Fn(buf[c.Low:c.High])
+}
+
+type discReader struct {
+	Low, High int // index range of data within buffer
+	Fn        DiscReaderFunc
+}
+
+func (d discReader) ReadItem(buf []byte) ([]byte, error) {
+	return d.Fn(buf[d.Low:d.High])
 }

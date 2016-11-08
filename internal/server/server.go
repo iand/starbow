@@ -31,6 +31,8 @@ type Server struct {
 	Net    string
 	Logger Logger
 	Stores []storage.Store
+
+	mux *http.ServeMux
 }
 
 // New creates a new server with default values.
@@ -63,9 +65,13 @@ func (s *Server) Serve() error {
 	}
 	s.Logger.Printf("listening on %s", s.Addr)
 
+	if err := s.registerHandlers(); err != nil {
+		return fmt.Errorf("fatal error registering handlers: %v", err)
+	}
+
 	hs := &http.Server{
 		Addr:    s.Addr,
-		Handler: http.HandlerFunc(s.route),
+		Handler: s,
 	}
 
 	go hs.Serve(listener)
@@ -95,22 +101,44 @@ type contextKey struct {
 	name string
 }
 
-func (s *Server) route(w http.ResponseWriter, req *http.Request) {
-	baseCtx := req.Context()
+func (s *Server) registerHandlers() error {
+	s.mux = http.NewServeMux()
 
-	path := req.URL.Path
-
-	switch {
-	case strings.HasPrefix(path, "/obs"):
+	s.mux.HandleFunc("/obs", func(w http.ResponseWriter, req *http.Request) {
 		if req.Method == http.MethodPost {
+			baseCtx := req.Context()
 			s.recvObservation(baseCtx, w, req)
 			return
 		}
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
-	}
+	})
 
-	http.NotFound(w, req)
+	s.mux.Handle("/collation/", http.StripPrefix("/collation/", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		path := req.URL.Path
+
+		if len(path) == 0 {
+			// TODO: list collations
+			http.NotFound(w, req)
+			return
+		}
+
+		if strings.IndexRune(path, '/') != -1 {
+			http.NotFound(w, req)
+			return
+		}
+
+		if req.Method != http.MethodPost && req.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		baseCtx := req.Context()
+		s.queryCollation(baseCtx, path, w, req)
+		return
+	})))
+
+	return nil
 }
 
 // recvObservation receives one or more observations and sends them to the collators
@@ -244,4 +272,51 @@ func parseFV(data []byte) collation.FV {
 		F: data[:eq],
 		V: data[eq+1:],
 	}
+}
+
+// queryCollation parses a query from the request and performs it on the named collation.
+func (s *Server) queryCollation(ctx context.Context, cname string, w http.ResponseWriter, req *http.Request) {
+
+	q := collation.Query{
+		FieldMeasures: []collation.FM{
+			{F: []byte(collation.RowPseudoField), M: [][]byte{[]byte("count")}},
+			{F: []byte("height"), M: [][]byte{[]byte("mean"), []byte("variance"), []byte("max"), []byte("min")}},
+		},
+	}
+
+	for f, v := range req.URL.Query() {
+		q.Criteria = append(q.Criteria, collation.FV{F: []byte(f), V: []byte(v[0])})
+	}
+
+	for _, store := range s.Stores {
+		if store.Collator.Name() == cname {
+			res, err := store.Read(ctx, q)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			for _, c := range q.Criteria {
+				w.Write(c.F)
+				w.Write([]byte{'='})
+				w.Write(c.V)
+				w.Write([]byte{'\n'})
+			}
+
+			for _, f := range res.FieldMeasureValues {
+				w.Write([]byte(f.String()))
+				w.Write([]byte{'\n'})
+			}
+			return
+		}
+	}
+
+	http.NotFound(w, req)
+}
+
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Disable caching of responses.
+	w.Header().Set("Cache-control", "no-cache")
+
+	s.mux.ServeHTTP(w, r)
 }

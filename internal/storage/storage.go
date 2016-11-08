@@ -15,7 +15,7 @@ type Backend interface {
 	// v using the function fn. It returns the error returned by fn, if any. The
 	// function fn may be called multiple times during a single call to Update, or
 	// not called at all.
-	Update(k uint64, fn func(data []byte, init bool) error) error // TODO: pass init=true when it's a new item in the keyvalue store
+	Update(k uint64, fn func(data []byte, init bool) error) error
 }
 
 type Store struct {
@@ -42,6 +42,24 @@ func (s *Store) Write(ctx context.Context, r collation.Row) error {
 	}
 
 	return s.Backend.Update(key, t.Do)
+}
+
+func (s *Store) Read(ctx context.Context, q collation.Query) (collation.Result, error) {
+	key, found := q.KeyValue(s.Collator.Keys())
+	if !found {
+		// Nothing to do
+		return collation.Result{}, nil
+	}
+
+	// TODO: reuse buffer
+	buf := make([]byte, s.Collator.Size())
+
+	if !s.Backend.Get(key, buf) {
+		// TODO: report not found?
+		return collation.Result{}, nil
+	}
+
+	return s.Collator.Read(q.FieldMeasures, buf)
 }
 
 type Transaction struct {

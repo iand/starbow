@@ -6728,8 +6728,8 @@ curl -X POST --data "data=1478566442000000|name=Île des Pins|country=New Caledo
 curl -X POST --data "data=1478566442000000|name=Östersund|country=Sweden|iata=ESNZ|height=1233|tz=Europe/Stockholm" http://127.0.0.1:2525/obs
 curl -X POST --data "data=1478566442000000|name=Žilina|country=Slovakia|iata=LZZI|height=1020|tz=Europe/Bratislava" http://127.0.0.1:2525/obs
 
-curl http://127.0.0.1:2525/collation/country?country=Spain
+curl "http://127.0.0.1:2525/collation/country?q=select+mean(height),+max(height)+where+country='Spain'"
 
-curl http://127.0.0.1:2525/collation/country?country=France
+curl "http://127.0.0.1:2525/collation/country?q=select+count(*)+where+country='France'"
 
-curl http://127.0.0.1:2525/collation/country?country=United+States
+curl "http://127.0.0.1:2525/collation/country?q=select+min(height)+where+country='United+States'"

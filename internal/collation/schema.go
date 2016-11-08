@@ -15,7 +15,7 @@ var (
 )
 
 const (
-	RowPseudoField = "-" // a field name that represents a row level measure
+	RowPseudoField = "*" // a field name that represents a row level measure
 )
 
 // A Schema defines the structure of a collation.

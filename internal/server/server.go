@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/iand/starbow/internal/collation"
+	"github.com/iand/starbow/internal/query"
 	"github.com/iand/starbow/internal/storage"
 )
 
@@ -277,15 +278,11 @@ func parseFV(data []byte) collation.FV {
 // queryCollation parses a query from the request and performs it on the named collation.
 func (s *Server) queryCollation(ctx context.Context, cname string, w http.ResponseWriter, req *http.Request) {
 
-	q := collation.Query{
-		FieldMeasures: []collation.FM{
-			{F: []byte(collation.RowPseudoField), M: [][]byte{[]byte("count")}},
-			{F: []byte("height"), M: [][]byte{[]byte("mean"), []byte("variance"), []byte("max"), []byte("min")}},
-		},
-	}
-
-	for f, v := range req.URL.Query() {
-		q.Criteria = append(q.Criteria, collation.FV{F: []byte(f), V: []byte(v[0])})
+	qstr := req.FormValue("q")
+	q, err := query.RoughParse(qstr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	for _, store := range s.Stores {

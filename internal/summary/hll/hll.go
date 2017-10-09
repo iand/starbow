@@ -3,15 +3,12 @@ package hll
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"math"
 
 	"github.com/iand/starbow/internal/bitbucket"
 	"github.com/iand/starbow/internal/hash/fnv"
 )
-
-var _ = fmt.Printf
 
 const (
 	// Version is the version number of the binary serialization format. All

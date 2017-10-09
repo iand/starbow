@@ -97,6 +97,7 @@ func TestCountDoesNotAllocate(t *testing.T) {
 	allocs := testing.AllocsPerRun(100, func() {
 		x = c.Count()
 	})
+	_ = x
 	if allocs != 0 {
 		t.Errorf("got %f allocations, wanted none", allocs)
 	}

@@ -2,7 +2,7 @@
 
 Starbow is a server for calculating statistics from streaming data.
 
-[[https://github.com/iand/starbow/blob/master/doc/starbow.png|alt=starbow]]
+![starbow](https://github.com/iand/starbow/blob/master/doc/starbow.png)
 
 
 Starbow aggregates observations from streams and collates statistical data from them according to pre-defined rules, holding them in memory. 

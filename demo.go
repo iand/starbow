@@ -44,19 +44,6 @@ func setupDemo(s *server.Server) error {
 		},
 	})
 
-	// addDemoCollation(s, collation.Schema{
-	// 	Name: "baruniques",
-	// 	Keys: []collation.KeySpec{
-	// 		{Field: collation.FieldSpec{Pattern: "x"}},
-	// 	},
-	// 	Measures: []collation.MeasureSpec{
-	// 		{
-	// 			Field:    collation.FieldSpec{Pattern: "bar"},
-	// 			Measures: []collation.Measure{collation.Cardinality{Precision: 14}},
-	// 		},
-	// 	},
-	// })
-
 	return nil
 }
 

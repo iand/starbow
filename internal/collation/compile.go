@@ -57,7 +57,7 @@ func (s *Schema) Compile() (Collator, error) {
 	}
 
 	for _, ms := range s.Measures {
-		// Special handling for count, mean, sum, variance - one summary can writing them all at once
+		// Special handling for count, mean, sum, variance - one summary can write them all at once
 		stat64 := false
 		stat64Low, stat64Hi := 0, 0
 

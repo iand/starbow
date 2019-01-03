@@ -21,7 +21,7 @@ func Equiv64(a, b float64) bool {
 	return a == b
 }
 
-// EquivalentOrCloseFloat64 reports whether two 64-bit floats are equivalent. It returns true if
+// EquivOrCloseFloat64 reports whether two 64-bit floats are equivalent. It returns true if
 // they are both infinite, NaN or numerically equal within a given tolerance.
 func EquivOrCloseFloat64(a, b float64, tolerance float64) bool {
 	if math.IsInf(a, 0) && math.IsInf(b, 0) {

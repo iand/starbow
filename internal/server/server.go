@@ -112,7 +112,6 @@ func (s *Server) registerHandlers() error {
 			return
 		}
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
 	})
 
 	s.mux.Handle("/collation/", http.StripPrefix("/collation/", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -124,7 +123,7 @@ func (s *Server) registerHandlers() error {
 			return
 		}
 
-		if strings.IndexRune(path, '/') != -1 {
+		if strings.ContainsRune(path, '/') {
 			http.NotFound(w, req)
 			return
 		}
@@ -136,7 +135,6 @@ func (s *Server) registerHandlers() error {
 
 		baseCtx := req.Context()
 		s.queryCollation(baseCtx, path, w, req)
-		return
 	})))
 
 	return nil
@@ -163,7 +161,7 @@ func (s *Server) recvObservation(ctx context.Context, w http.ResponseWriter, req
 		r = req.Body
 		defer req.Body.Close()
 	default:
-		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
+		http.Error(w, "unknown media type", http.StatusUnsupportedMediaType)
 		return
 	}
 
@@ -185,7 +183,6 @@ func (s *Server) recvObservation(ctx context.Context, w http.ResponseWriter, req
 		}
 
 		row.ReceiveTime = now
-		fmt.Printf("%+v\n", row)
 		for _, st := range s.Stores {
 			if err := st.Write(ctx, row); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)

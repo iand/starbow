@@ -198,6 +198,7 @@ func (Min) ContReader() ContReaderFunc {
 
 // Approximate measures
 
+// TODO
 // // LookbackCount is an approximate count of observations within a lookback window of time from the present.
 // type LookbackCount struct {
 // 	Lookback time.Duration
@@ -205,6 +206,7 @@ func (Min) ContReader() ContReaderFunc {
 
 // func (LookbackCount) ObsType() ObsType { return Any }
 
+// TODO
 // // WindowedCount is an approximate count of observations within a fixed time window.
 // type WindowedCount struct {
 // 	Interval Interval
@@ -212,6 +214,7 @@ func (Min) ContReader() ContReaderFunc {
 
 // func (WindowedCount) ObsType() ObsType { return Any }
 
+// TODO
 // // BucketedCount is an approximate count of observations within a series of equally sized time windows.
 // type BucketedCount struct {
 // 	Buckets  int
@@ -266,6 +269,7 @@ func (c Cardinality) Size() int {
 
 func (Cardinality) Name() string { return "uniquecount" }
 
+// TODO
 // // LookbackCardinality is an approximate count of unique observations within a lookback window of time from the present.
 // type LookbackCardinality struct {
 // 	Lookback time.Duration
@@ -273,6 +277,7 @@ func (Cardinality) Name() string { return "uniquecount" }
 
 // func (LookbackCardinality) ObsType() ObsType { return Discrete }
 
+// TODO
 // // WindowedCardinality is an approximate count of unique observations within a fixed time window.
 // type WindowedCardinality struct {
 // 	Interval Interval
@@ -286,7 +291,8 @@ func (Cardinality) Name() string { return "uniquecount" }
 
 // func (TopK) ObsType() ObsType { return Discrete }
 
-// // Interval is an contiguous interval of time comprising all times after After and before Before.
+// TODO
+// // Interval is a contiguous interval of time comprising all times after After and before Before.
 // type Interval struct {
 // 	After  time.Time
 // 	Before time.Time

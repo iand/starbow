@@ -125,3 +125,19 @@ Starbow supports a very simple API:
 
  * `POST /obs` - send one or more observations to the server
  * `GET+POST /collation/{name}?q={query}` - query a collation
+
+
+# Versioning
+
+This project uses [Semantic Versioning](https://semver.org). Version information is held in the internal/version package. Each release is tagged in the git repository by prefixing the version with `v`, e.g. `v0.1.1-devel`
+
+Release steps:
+
+ 1. Update Major, Minor and Patch as appropriate in internal/version/version.go
+ 2. Ensure that PreRelease is empty.
+ 3. Ensure CHANGELOG.md is up to date.
+ 4. Commit changes.
+ 5. Tag the commit with the version number prefixed by `v`.
+ 6. Change PreRelease to `devel`.
+ 7. Commit change.
+

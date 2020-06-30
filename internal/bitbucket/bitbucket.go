@@ -41,7 +41,7 @@ func New(n int, w uint8) BitBucket {
 
 // WithBytes creates a new bit bucket that uses buf as its backing storage,
 // preserving any existing data in the byte slice. Any subsequent writes to
-// the bloom filter will mutate buf. The layout of the byte buffer must match
+// the bit bucket will mutate buf. The layout of the byte buffer must match
 // the layout used by the WriteTo method on an equivalent bit bucket.
 func WithBytes(buf []byte) (BitBucket, error) {
 	if len(buf) < hdrLen {

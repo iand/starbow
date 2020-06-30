@@ -11,6 +11,12 @@ import (
 // size is the size of a Summary in bytes
 const size = 32
 
+// The is structured as four float64 values
+//  * count of observations
+//  * sum of observations
+//  * running mean of observations
+//  * sum of squares of differences from the current mean
+
 var zeroStats64 = bytes.Repeat([]byte{0}, size)
 
 // Reset returns all measures tracked by the summary represented by the supplied byte buffer to their zero values.
@@ -45,7 +51,7 @@ func (s Summary) Len() int {
 	return size
 }
 
-// Count returns the number the series of observations.
+// Count returns the number of observations received.
 func (s Summary) Count() uint64 {
 	return binary.LittleEndian.Uint64(s[:8])
 }

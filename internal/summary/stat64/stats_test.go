@@ -112,7 +112,7 @@ func BenchmarkReset(b *testing.B) {
 	s := New()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s.Reset()
+		_ = s.Reset()
 	}
 	benchres = s.Mean()
 }

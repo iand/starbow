@@ -36,7 +36,7 @@ instance based on the values of the observation's fields corresponding to the
 collation's keys. The collation then uses the values of the observation's
 measure fields to update its statistics.
 
-Collations can defined via the Starbow API on an ad-hoc basis and participate
+Collations can be defined via the Starbow API on an ad-hoc basis and participate
 in routing as soon as they are created. The API also provides a service for
 measuring the memory requirements for a collation given the expected
 cardinality of the keys. The memory footprint of a collation will vary heavily

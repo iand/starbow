@@ -7,7 +7,7 @@ const (
 	Major      = 0
 	Minor      = 1
 	Patch      = 0
-	PreRelease = ""
+	PreRelease = "devel"
 )
 
 // String formats the version in semver format, see semver.org
